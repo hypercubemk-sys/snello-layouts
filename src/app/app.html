@@ -1,0 +1,53 @@
+<div class="shell" [class.nav-open]="menuOpen()">
+  <aside>
+    <a class="brand" routerLink="/layouts" (click)="closeMenus()">
+      <span>Snello</span>
+      <strong>Layouts</strong>
+    </a>
+    <nav>
+      <a routerLink="/layouts" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenus()">Libreria</a>
+      <a routerLink="/layouts/new" routerLinkActive="active" (click)="closeMenus()">Nuovo layout</a>
+    </nav>
+    <p class="aside-note">Configuratore protetto da Keycloak, realm snello, client snello-admin. I layout restano in questo browser.</p>
+  </aside>
+  <div class="workspace">
+    <header class="topbar">
+      <a class="topbar-logo" routerLink="/layouts" aria-label="Snello">
+        <img src="snello-logo.svg" alt="Snello" />
+      </a>
+      <div class="topbar-tools">
+        <button type="button" class="icon-btn menu-toggle" aria-label="Menu" [attr.aria-expanded]="menuOpen()" (click)="toggleMenu()">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4h11M2.5 8h11M2.5 12h11" /></svg>
+        </button>
+        <div class="user-wrap">
+          <button type="button" class="icon-btn" aria-label="Utente" [attr.aria-expanded]="userOpen()" (click)="toggleUser()">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5.2" r="2.2" /><path d="M3.2 13.2c.7-2.2 2.4-3.3 4.8-3.3s4.1 1.1 4.8 3.3" /></svg>
+          </button>
+          @if (userOpen()) {
+            <div class="user-tip" role="tooltip">
+              <strong>{{ profile.name }}</strong>
+              @if (profile.username) {
+                <span>Utente</span>
+                <p>{{ profile.username }}</p>
+              }
+              @if (profile.email) {
+                <span>Email</span>
+                <p>{{ profile.email }}</p>
+              }
+              <span>Realm</span>
+              <p>{{ profile.realm }}</p>
+              <span>Client</span>
+              <p>{{ profile.client }}</p>
+              <button type="button" class="icon-btn" aria-label="Esci" title="Esci" (click)="logout()">
+                <app-icon name="logout" />
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    </header>
+    <main>
+      <router-outlet />
+    </main>
+  </div>
+</div>

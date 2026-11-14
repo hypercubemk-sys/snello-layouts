@@ -1,0 +1,169 @@
+@if (!layout()) {
+  <section class="empty">
+    <h1>Layout non trovato</h1>
+    <a class="icon-btn btn-primary" routerLink="/layouts" aria-label="Torna alla libreria" title="Torna alla libreria"><app-icon name="back" /></a>
+  </section>
+} @else {
+  <section class="page-head">
+    <div>
+      <p class="kicker">{{ layout()?.metadataName }} · {{ layout()?.pageType }}</p>
+      <h1>{{ layout()?.name }}</h1>
+    </div>
+    <a class="icon-btn" [routerLink]="['/layouts', layout()?.id]" aria-label="Modifica layout" title="Modifica layout"><app-icon name="pencil" /></a>
+  </section>
+
+  @if (layout()?.pageType === 'list' && layout()?.body?.kind === 'list') {
+    <section class="filters">
+      <div class="section-title">
+        <h2>Filtri</h2>
+        <div class="icon-row">
+          <button type="button" class="icon-btn" [attr.aria-label]="filtersOpen() ? 'Chiudi filtri' : 'Apri filtri'" [attr.title]="filtersOpen() ? 'Chiudi filtri' : 'Apri filtri'" (click)="filtersOpen.set(!filtersOpen())">
+            <app-icon name="filter" />
+          </button>
+          <div class="tool-pop">
+            <button type="button" class="icon-btn columns-toggle" aria-label="Campi visibili" title="Campi visibili" [attr.aria-expanded]="columnsOpen()" (click)="toggleColumns()">
+              <app-icon name="sliders" />
+            </button>
+            @if (columnsOpen()) {
+              <div class="column-pop">
+                <div class="icon-row">
+                  <button type="button" class="text-btn" (click)="selectAllColumns()">Scegli tutto</button>
+                  <button type="button" class="text-btn" (click)="clearColumns()">Rimuovi tutto</button>
+                </div>
+                <ul>
+                  @for (column of columnChoices(); track column.fieldName) {
+                    <li>
+                      <label>
+                        <input type="checkbox" [checked]="columnOn(column.fieldName)" (change)="toggleColumn(column.fieldName)" />
+                        <span>{{ fieldLabel(column.fieldName) }}</span>
+                      </label>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+      @if (!filtersOpen() && appliedFilters().length) {
+        <ul class="applied">
+          @for (item of appliedFilters(); track item.name) {
+            <li><span>{{ item.label }}</span><strong>{{ item.value }}</strong></li>
+          }
+        </ul>
+      }
+      @if (filtersOpen()) {
+        @if (filterFields().length === 0) {
+          <p class="muted">Questo metadato non ha campi filtrabili.</p>
+        } @else {
+          <form [formGroup]="filterForm()" (ngSubmit)="applyFilters()">
+            <formly-form class="filter-grid" [form]="filterForm()" [fields]="filterFields()" [model]="filterModel" />
+            <div class="row-actions">
+              <button type="submit" class="icon-btn btn-primary" aria-label="Applica" title="Applica"><app-icon name="check" /></button>
+              <button type="button" class="icon-btn" aria-label="Azzera" title="Azzera" (click)="clearFilters()"><app-icon name="close" /></button>
+            </div>
+          </form>
+        }
+      }
+    </section>
+
+    <section class="table-wrap">
+      <div class="section-title">
+        <h2>{{ total() }} record</h2>
+        @if (rows.isLoading()) {
+          <p class="muted">Carico la lista…</p>
+        }
+      </div>
+      @if (rows.status() === 'error') {
+        <p class="banner">La lista non è disponibile.</p>
+      } @else {
+        <div class="table-scroll">
+          <table class="data">
+            <thead>
+              <tr>
+                @for (column of columns(); track column.fieldName) {
+                  <th>{{ fieldLabel(column.fieldName) }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of rows.value(); track recordId(row)) {
+                <tr>
+                  @for (column of columns(); track column.fieldName) {
+                    <td>
+                      @if (isImage(column.fieldName) && imageUrl(row[column.fieldName]); as src) {
+                        <img class="thumb" [src]="src" alt="" />
+                      } @else if (isRelation(column.fieldName)) {
+                        <span class="rel-marks">
+                          @for (mark of relationMarks(row[column.fieldName]); track mark.token) {
+                            <i class="rel-mark" [attr.title]="mark.name" [attr.aria-label]="mark.name">{{ mark.letter }}</i>
+                          } @empty {
+                            —
+                          }
+                        </span>
+                      } @else {
+                        <app-list-value
+                          [field]="definition(column.fieldName)"
+                          [value]="row[column.fieldName]"
+                          [labels]="linkedLabels()"
+                          [pending]="labelsLoading()" />
+                      }
+                    </td>
+                  }
+                </tr>
+              } @empty {
+                <tr>
+                  <td [attr.colspan]="columns().length || 1">Nessun record</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+      <p-paginator
+        [first]="pageStart()"
+        [rows]="pageSize()"
+        [totalRecords]="total()"
+        [rowsPerPageOptions]="pageSizes"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="{first}–{last} di {totalRecords}"
+        (onPageChange)="changePage($event)" />
+    </section>
+  } @else {
+    <section class="record-bar">
+      <label>
+        Record di prova
+        <select [value]="recordKey()" (change)="chooseRecord($event)">
+          <option value="">Vuoto</option>
+          @for (row of pickerRows(); track recordId(row)) {
+            <option [value]="recordId(row)">{{ recordLabel(row) }}</option>
+          }
+        </select>
+      </label>
+      @if (record.isLoading()) {
+        <p class="muted">Carico il record…</p>
+      }
+    </section>
+
+    <section class="wizard">
+      <div class="stepper">
+        <span>Passo {{ step() + 1 }} di {{ pageCount() }}</span>
+        <strong>{{ pageTitle() }}</strong>
+      </div>
+      <form [formGroup]="entryForm()" (ngSubmit)="submit()">
+        <formly-form [form]="entryForm()" [fields]="entryFields()" [model]="model" />
+        <div class="row-actions">
+          <button type="button" class="icon-btn" aria-label="Indietro" title="Indietro" (click)="previousStep()" [disabled]="step() === 0"><app-icon name="back" /></button>
+          @if (step() < pageCount() - 1) {
+            <button type="button" class="icon-btn btn-primary" aria-label="Avanti" title="Avanti" (click)="nextStep()"><app-icon name="forward" /></button>
+          } @else if (layout()?.pageType === 'edit') {
+            <button type="submit" class="icon-btn btn-primary" aria-label="Leggi il payload" title="Leggi il payload"><app-icon name="code" /></button>
+          }
+        </div>
+      </form>
+      @if (result()) {
+        <pre class="code">{{ resultText() }}</pre>
+      }
+    </section>
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "apiBase": "https://api.sne.lol/api",
+  "keycloak": {
+    "url": "https://accounts.kayak.love/",
+    "realm": "snello",
+    "clientId": "snello-admin"
+  }
+}

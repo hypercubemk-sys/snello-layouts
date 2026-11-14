@@ -1,0 +1,190 @@
+<section class="page-head">
+  <div>
+    <p class="kicker">Configuratore</p>
+    <h1>{{ name() || 'Nuovo layout' }}</h1>
+  </div>
+  <div class="row-actions">
+    <a class="icon-btn" routerLink="/layouts" aria-label="Libreria" title="Libreria"><app-icon name="back" /></a>
+    <button type="button" class="icon-btn" aria-label="Salva" title="Salva" (click)="save(false)" [disabled]="!metadataName()">
+      <app-icon name="check" />
+    </button>
+    <button type="button" class="icon-btn btn-primary" aria-label="Salva e prova" title="Salva e prova" (click)="save(true)" [disabled]="!metadataName()">
+      <app-icon name="play" />
+    </button>
+  </div>
+</section>
+
+@if (loadError()) {
+  <p class="banner">{{ loadError() }}</p>
+}
+@if (saved()) {
+  <p class="banner ok">Layout salvato in questo browser.</p>
+}
+@if (metadatas.status() === 'error') {
+  <p class="banner">Non riesco a leggere i metadati da api.sne.lol.</p>
+}
+
+<section class="setup">
+  <label>
+    Metadato
+    <select #metadataSelect [value]="metadataName()" (change)="onMetadata(metadataSelect)">
+      <option value="">Scegli</option>
+      @for (item of metadataOptions(); track item.uuid) {
+        <option [value]="item.table_name">{{ item.description || item.table_name }}</option>
+      }
+    </select>
+  </label>
+  <div class="segmented" role="group" aria-label="Tipo pagina">
+    <button type="button" aria-label="Lista" title="Lista" [class.on]="pageType() === 'list'" (click)="setPageType('list')"><app-icon name="list" /></button>
+    <button type="button" aria-label="Edit" title="Edit" [class.on]="pageType() === 'edit'" (click)="setPageType('edit')"><app-icon name="pencil" /></button>
+    <button type="button" aria-label="View" title="View" [class.on]="pageType() === 'view'" (click)="setPageType('view')"><app-icon name="eye" /></button>
+  </div>
+  <label>
+    Nome
+    <input [value]="name()" (input)="onName($event)" placeholder="metadato edit" />
+  </label>
+</section>
+
+@if (!metadataName()) {
+  <section class="empty">
+    <h2>Scegli un metadato</h2>
+    <p>I field definition arrivano da https://api.sne.lol/api e diventano il materiale del layout.</p>
+  </section>
+} @else if (fieldResource.isLoading()) {
+  <p class="muted">Carico i field definition…</p>
+} @else {
+  <div class="studio">
+    <aside class="palette">
+      <h2>Campi</h2>
+      <ul>
+        @for (field of fields(); track field.uuid ?? field.name) {
+          <li>
+            <button
+              type="button"
+              [disabled]="pageType() !== 'list' && usedNames().has(field.name || '')"
+              (click)="pageType() === 'list' ? toggleColumn(field.name || '') : addField(field.name || '')">
+              <strong>{{ field.label || field.name }}</strong>
+              <span>{{ typeOf(field.name || '') }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+    </aside>
+
+    <section class="canvas">
+      @if (pageType() === 'list' && listBody()) {
+        <div class="section-title">
+          <h2>Colonne</h2>
+          <p>All’inizio sono tutte visibili. In lista i filtri del metadato restano tutti aperti e si usano insieme.</p>
+        </div>
+        <ol class="columns">
+          @for (column of columns(); track column.fieldName) {
+            <li [class.off]="!column.visible">
+              <label class="check">
+                <input type="checkbox" [checked]="column.visible" (change)="toggleColumn(column.fieldName)" />
+                <span>{{ fieldOf(column.fieldName)?.label || column.fieldName }}</span>
+              </label>
+              <em>{{ typeOf(column.fieldName) }}</em>
+              <div class="icon-row">
+                <button type="button" class="icon-btn" aria-label="Sposta su" title="Sposta su" (click)="moveColumn(column.fieldName, -1)">
+                  <app-icon name="up" />
+                </button>
+                <button type="button" class="icon-btn" aria-label="Sposta giù" title="Sposta giù" (click)="moveColumn(column.fieldName, 1)">
+                  <app-icon name="down" />
+                </button>
+              </div>
+            </li>
+          }
+        </ol>
+        <div class="filter-note">
+          <h3>Filtri attivi</h3>
+          @if (activeFilters().length === 0) {
+            <p class="muted">Nessun filtro.</p>
+          } @else {
+            <ul class="chips">
+              @for (filter of activeFilters(); track filter.name) {
+                <li>{{ filter.label || filter.name }} · {{ filter.search_condition || 'eq' }}</li>
+              }
+            </ul>
+          }
+        </div>
+      } @else {
+        <div class="section-title">
+          <h2>Pagine</h2>
+          <button type="button" class="icon-btn" aria-label="Aggiungi pagina" title="Aggiungi pagina" (click)="addPage()">
+            <app-icon name="plus" />
+          </button>
+        </div>
+        <div class="step-tabs">
+          @for (page of wizard()?.pages ?? []; track page.id; let index = $index) {
+            <button type="button" [class.on]="selectedPage()?.id === page.id" (click)="selectPage(page.id)">
+              {{ index + 1 }}. {{ page.title }}
+            </button>
+          }
+        </div>
+
+        @if (selectedPage(); as page) {
+          <div class="page-tools">
+            <input [value]="page.title" (input)="renamePage(page.id, $event)" />
+            <button type="button" class="icon-btn" aria-label="Elimina pagina" title="Elimina pagina" (click)="removePage(page.id)">
+              <app-icon name="trash" />
+            </button>
+            <button type="button" class="icon-btn" aria-label="Aggiungi blocco" title="Aggiungi blocco" (click)="addBox()">
+              <app-icon name="plus" />
+            </button>
+          </div>
+          @for (box of page.boxes; track box.id) {
+            <article class="box editor-box" [class.on]="selectedBoxId() === box.id" (click)="selectBox(box.id)">
+              <header>
+                <input [value]="box.title" (input)="renameBox(box.id, $event)" />
+                <button type="button" class="icon-btn" aria-label="Elimina blocco" title="Elimina blocco" (click)="removeBox(box.id)">
+                  <app-icon name="trash" />
+                </button>
+              </header>
+              @if (box.fields.length === 0) {
+                <p class="muted">Clicca un campo a sinistra per metterlo in questo blocco.</p>
+              }
+              <ol class="field-board">
+                @for (field of box.fields; track field.fieldName) {
+                  <li class="field-card" [class.span-12]="field.span === 12" [class.span-6]="field.span === 6" [class.span-4]="field.span === 4">
+                    <div>
+                      <strong>{{ fieldOf(field.fieldName)?.label || field.fieldName }}</strong>
+                      <span class="type-pill">{{ typeOf(field.fieldName) }}</span>
+                    </div>
+                    <label class="check">
+                      <input type="checkbox" [checked]="field.required" (change)="toggleRequired(box.id, field.fieldName)" />
+                      <span>Obbligatorio</span>
+                    </label>
+                    <select [value]="field.span" (change)="setSpan(box.id, field.fieldName, $event)">
+                      <option value="12">Intera</option>
+                      <option value="6">Metà</option>
+                      <option value="4">Terzo</option>
+                    </select>
+                    <div class="card-actions icon-row">
+                      <button type="button" class="icon-btn" aria-label="Sposta su" title="Sposta su" (click)="moveField(box.id, field.fieldName, -1)">
+                        <app-icon name="up" />
+                      </button>
+                      <button type="button" class="icon-btn" aria-label="Sposta giù" title="Sposta giù" (click)="moveField(box.id, field.fieldName, 1)">
+                        <app-icon name="down" />
+                      </button>
+                      <button type="button" class="icon-btn" aria-label="Togli" title="Togli" (click)="removeField(box.id, field.fieldName)">
+                        <app-icon name="minus" />
+                      </button>
+                    </div>
+                  </li>
+                }
+              </ol>
+            </article>
+          }
+        }
+      }
+
+      <button type="button" class="icon-btn json-toggle" [attr.aria-label]="showJson() ? 'Nascondi JSON' : 'Mostra JSON'" [attr.title]="showJson() ? 'Nascondi JSON' : 'Mostra JSON'" (click)="showJson.set(!showJson())">
+        <app-icon name="code" />
+      </button>
+      @if (showJson()) {
+        <pre class="code">{{ jsonText() }}</pre>
+      }
+    </section>
+  </div>
+}

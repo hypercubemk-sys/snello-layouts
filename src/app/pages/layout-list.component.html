@@ -1,0 +1,58 @@
+<section class="page-head">
+  <div>
+    <p class="kicker">api.sne.lol</p>
+    <h1>Libreria layout</h1>
+  </div>
+  <a class="icon-btn btn-primary" routerLink="/layouts/new" aria-label="Crea layout" title="Crea layout">
+    <app-icon name="plus" />
+  </a>
+</section>
+
+@if (metadatas.status() === 'error') {
+  <p class="banner">Non riesco a leggere i metadati da api.sne.lol.</p>
+} @else {
+  <p class="stat">{{ metadataCount() }} metadati disponibili sul sito di prova.</p>
+}
+
+@if (layouts().length === 0) {
+  <section class="empty">
+    <h2>Nessun layout salvato</h2>
+    <p>Il primo layout parte da tutti i campi del metadato. Poi decidi visibilità, ordine, obbligatorietà e raggruppamenti.</p>
+  </section>
+} @else {
+  <div class="cards">
+    @for (layout of layouts(); track layout.id) {
+      <article class="card">
+        <p class="kicker">{{ layout.metadataName }} · {{ layout.pageType }}</p>
+        <h2>{{ layout.name }}</h2>
+        <div class="card-foot">
+          <time [attr.datetime]="layout.updatedAt">{{ layout.updatedAt | date: 'dd/MM/yy HH:mm' }}</time>
+          <div class="icon-row">
+            <a class="icon-btn" [routerLink]="['/layouts', layout.id]" aria-label="Modifica" title="Modifica">
+              <app-icon name="pencil" />
+            </a>
+            <a class="icon-btn btn-primary" [routerLink]="['/play', layout.id]" aria-label="Prova" title="Prova">
+              <app-icon name="play" />
+            </a>
+            <button type="button" class="icon-btn" aria-label="Elimina" title="Elimina" (click)="remove(layout)">
+              <app-icon name="trash" />
+            </button>
+          </div>
+        </div>
+      </article>
+    }
+  </div>
+}
+
+<section class="catalog">
+  <h2>Field type Formly</h2>
+  <p>Gli stessi tipi di snello-admin, registrati come type Formly e piazzabili nei layout.</p>
+  <ul>
+    @for (type of catalog; track type.id) {
+      <li>
+        <strong>{{ type.label }}</strong>
+        <span>{{ type.hint }}</span>
+      </li>
+    }
+  </ul>
+</section>
