@@ -1,6 +1,10 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { httpResource } from '@angular/common/http';
-import { ReactiveFormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { CheckboxModule } from '@openng/optimus-ui/checkbox';
+import { DatePickerModule } from '@openng/optimus-ui/datepicker';
+import { SelectModule } from '@openng/optimus-ui/select';
 import { FieldType, FieldTypeConfig, FormlyModule } from '@ngx-formly/core';
 import { joinKeyName, joinLabelName, SnelloApi } from '../core/snello-api';
 import { staticOptions } from '../core/field-types';
@@ -10,11 +14,22 @@ import { Icon } from '../icon';
 
 @Component({
   selector: 'app-formly-input',
-  imports: [ReactiveFormsModule, FormlyModule],
+  imports: [ReactiveFormsModule, FormlyModule, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (props.readonly) {
       <p class="readonly">{{ shown }}</p>
+    } @else if (searchMark) {
+      <span class="search-input" [attr.title]="searchTitle">
+        <input
+          [id]="id"
+          [type]="inputType"
+          [attr.inputmode]="field.type === 'decimal' ? 'decimal' : null"
+          [attr.step]="field.type === 'number' || field.type === 'decimal' ? 'any' : null"
+          [formControl]="formControl"
+          [formlyAttributes]="field" />
+        <app-icon [name]="searchMark" />
+      </span>
     } @else {
       <input
         [id]="id"
@@ -27,6 +42,18 @@ import { Icon } from '../icon';
   `,
 })
 export class InputField extends FieldType<FieldTypeConfig> {
+  get searchMark(): 'like' | 'equals' | '' {
+    if (this.props['search'] !== true) return '';
+    const mode = this.props['searchMode'];
+    if (mode === 'containss' || mode === 'like') return 'like';
+    if (mode === 'eq' || mode === '=') return 'equals';
+    return '';
+  }
+
+  get searchTitle(): string {
+    return this.searchMark === 'like' ? 'Like' : 'Uguale';
+  }
+
   get inputType(): string {
     if (this.field.type === 'number') return 'number';
     if (this.field.type === 'password') return 'password';
@@ -59,27 +86,38 @@ export class TextareaField extends FieldType<FieldTypeConfig> {
 
 @Component({
   selector: 'app-formly-check',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, CheckboxModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (props.readonly) {
       <p class="readonly">{{ state() === true ? 'Sì' : state() === false ? 'No' : '—' }}</p>
-    } @else if (triState) {
-      <button type="button" class="toggle" [class.on]="state() === true" [class.off]="state() === false" (click)="cycle()">
-        <i></i>
-        <span>{{ state() === true ? 'Sì' : state() === false ? 'No' : 'Indifferente' }}</span>
-      </button>
     } @else {
-      <button type="button" class="toggle" [class.on]="state() === true" (click)="flip()">
-        <i></i>
-        <span>{{ field.type === 'passivation' ? 'Record passivo' : 'Attivo' }}</span>
-      </button>
+      <label class="check">
+        <p-checkbox
+          [binary]="true"
+          [inputId]="id"
+          [formControl]="formControl"
+          [indeterminate]="triState && state() === null"
+          (onChange)="keepCycle($event)" />
+        <span>{{ caption }}</span>
+      </label>
     }
   `,
 })
-export class CheckboxField extends FieldType<FieldTypeConfig> {
+export class CheckboxField extends FieldType<FieldTypeConfig> implements OnInit {
+  private prior: boolean | null = null;
+
+  ngOnInit(): void {
+    this.prior = this.state();
+  }
+
   get triState(): boolean {
     return this.props['search'] === true && this.field.type !== 'passivation';
+  }
+
+  get caption(): string {
+    if (this.triState) return this.state() === true ? 'Sì' : this.state() === false ? 'No' : 'Indifferente';
+    return this.field.type === 'passivation' ? 'Record passivo' : 'Attivo';
   }
 
   state(): boolean | null {
@@ -89,32 +127,35 @@ export class CheckboxField extends FieldType<FieldTypeConfig> {
     return null;
   }
 
-  flip(): void {
-    this.formControl.setValue(this.state() !== true);
-    this.formControl.markAsDirty();
-  }
-
-  cycle(): void {
-    const current = this.state();
-    this.formControl.setValue(current === null ? true : current === true ? false : null);
-    this.formControl.markAsDirty();
+  keepCycle(event: { checked?: boolean }): void {
+    if (this.triState && event.checked === true && this.prior === false) {
+      this.formControl.setValue(null);
+      this.prior = null;
+      return;
+    }
+    this.prior = this.state();
   }
 }
 
 @Component({
   selector: 'app-formly-select',
-  imports: [ReactiveFormsModule, FormlyModule],
+  imports: [ReactiveFormsModule, SelectModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (props.readonly) {
       <p class="readonly">{{ shown }}</p>
     } @else {
-      <select [id]="id" [formControl]="formControl" [formlyAttributes]="field">
-        <option value="">—</option>
-        @for (option of choices; track option.value) {
-          <option [value]="option.value">{{ option.label }}</option>
-        }
-      </select>
+      <p-select
+        [inputId]="id"
+        [options]="choices"
+        optionLabel="label"
+        optionValue="value"
+        [editable]="true"
+        [formControl]="formControl"
+        [fluid]="true"
+        [showClear]="true"
+        [appendTo]="'body'"
+        placeholder="—" />
     }
   `,
 })
@@ -193,30 +234,101 @@ export class MultiselectField extends FieldType<FieldTypeConfig> implements OnIn
 
 @Component({
   selector: 'app-formly-temporal',
-  imports: [ReactiveFormsModule, FormlyModule],
+  imports: [ReactiveFormsModule, DatePickerModule, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (props.readonly) {
       <p class="readonly">{{ shown }}</p>
     } @else {
-      <input [id]="id" [type]="inputType" [formControl]="formControl" [formlyAttributes]="field" />
+      <span class="range-input" [attr.title]="rangeTitle">
+        @if (rangeMark) {
+          <app-icon [name]="rangeMark" />
+        }
+        <p-datepicker
+          [inputId]="id"
+          [formControl]="picker"
+          dataType="string"
+          [dateFormat]="dateFormat"
+          [showTime]="showTime"
+          hourFormat="24"
+          [timeOnly]="timeOnly"
+          [showIcon]="true"
+          [fluid]="true"
+          [appendTo]="'body'"
+          [baseZIndex]="2000"
+          [firstDayOfWeek]="1"
+          [showButtonBar]="true" />
+      </span>
     }
   `,
 })
-export class TemporalField extends FieldType<FieldTypeConfig> {
-  get inputType(): string {
-    if (this.field.type === 'datetime') return 'datetime-local';
-    if (this.field.type === 'time') return 'time';
-    return 'date';
+export class TemporalField extends FieldType<FieldTypeConfig> implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
+  readonly picker = new FormControl<string | null>(null);
+
+  ngOnInit(): void {
+    this.picker.setValue(pickerText(this.formControl.value, this.kind), { emitEvent: false });
+    this.formControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((value) => {
+      const next = pickerText(value, this.kind);
+      if (next !== this.picker.value) this.picker.setValue(next, { emitEvent: false });
+    });
+    this.picker.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((value) => {
+      if (value !== this.formControl.value) this.formControl.setValue(value);
+    });
+  }
+
+  get kind(): string {
+    const type = this.field.type;
+    return typeof type === 'string' ? type : 'date';
+  }
+
+  get dateFormat(): string {
+    return 'yy-mm-dd';
+  }
+
+  get showTime(): boolean {
+    return this.kind === 'datetime';
+  }
+
+  get timeOnly(): boolean {
+    return this.kind === 'time';
+  }
+
+  get rangeMark(): 'from' | 'to' | '' {
+    if (this.props['search'] !== true) return '';
+    if (this.props['searchMode'] === 'gte') return 'from';
+    if (this.props['searchMode'] === 'lte') return 'to';
+    return '';
+  }
+
+  get rangeTitle(): string | null {
+    if (this.rangeMark === 'from') return 'Da';
+    if (this.rangeMark === 'to') return 'A';
+    return null;
   }
 
   get shown(): string {
-    const value = this.formControl.value;
-    if (value == null || value === '') return '—';
-    const text = String(value);
-    if (this.field.type === 'datetime') return text.replace('T', ' ').slice(0, 16);
-    return text;
+    const text = pickerText(this.formControl.value, this.kind);
+    if (!text) return '—';
+    if (this.kind === 'time') return text;
+    const [date, time] = text.split(' ');
+    const [year, month, day] = date.split('-');
+    if (!day || !month || !year) return text;
+    return time ? `${day}/${month}/${year} ${time}` : `${day}/${month}/${year}`;
   }
+}
+
+function pickerText(value: unknown, kind: string): string | null {
+  if (value == null || value === '') return null;
+  const text = String(value).trim();
+  if (kind === 'time') {
+    const match = text.match(/(\d{2}:\d{2})/);
+    return match?.[1] ?? text;
+  }
+  const match = text.match(/^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}))?/);
+  if (!match) return text;
+  if (kind === 'datetime') return `${match[1]} ${match[2] ?? '00:00'}`;
+  return match[1];
 }
 
 @Component({

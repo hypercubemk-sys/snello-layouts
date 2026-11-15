@@ -28,17 +28,34 @@ export function filterFormFields(fields: FieldDefinition[]): FormlyFieldConfig[]
     .filter((field) => !!field.name)
     .map((field) => ({
       key: field.name ?? '',
-      type: searchFormlyType(field),
+      type: filterControlType(field),
       className: 'span-4',
       wrappers: ['field'],
       props: {
         label: field.label || field.name || '',
         required: false,
         search: true,
-        typeLabel: field.search_condition || 'eq',
+        searchMode: field.search_condition,
+        typeLabel: searchTypeLabel(field.search_condition),
         definition: field,
       },
     }));
+}
+
+function filterControlType(field: FieldDefinition): string {
+  const logical = logicalFieldType(field);
+  if (logical === 'join' || logical === 'lookup') return 'lookup';
+  if (logical === 'multijoin' || logical === 'multilookup') return 'multilookup';
+  if (logical === 'realtionships') return 'realtionships';
+  if (logical === 'tinymce' || logical === 'text') return 'string';
+  return searchFormlyType(field);
+}
+
+function searchTypeLabel(condition: string | null | undefined): string {
+  if (condition === 'containss' || condition === 'like') return 'Like';
+  if (condition === 'gte' || condition === 'lte' || condition === 'range') return 'Intervallo';
+  if (condition === 'boolean') return 'Booleano';
+  return 'Uguale';
 }
 
 function fieldConfig(

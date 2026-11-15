@@ -5,12 +5,21 @@
   </div>
   <div class="row-actions">
     <a class="icon-btn" routerLink="/layouts" aria-label="Libreria" title="Libreria"><app-icon name="back" /></a>
-    <button type="button" class="icon-btn" aria-label="Salva" title="Salva" (click)="save(false)" [disabled]="!metadataName()">
-      <app-icon name="check" />
-    </button>
-    <button type="button" class="icon-btn btn-primary" aria-label="Salva e prova" title="Salva e prova" (click)="save(true)" [disabled]="!metadataName()">
-      <app-icon name="play" />
-    </button>
+    @if (id()) {
+      <button type="button" class="icon-btn" aria-label="Salva" title="Salva" (click)="save(false)" [disabled]="!metadataName()">
+        <app-icon name="check" />
+      </button>
+      <button type="button" class="icon-btn btn-primary" aria-label="Salva e prova" title="Salva e prova" (click)="save(true)" [disabled]="!metadataName()">
+        <app-icon name="play" />
+      </button>
+    } @else {
+      <button type="button" class="icon-btn" aria-label="Crea" title="Crea" (click)="createDrafts(false)" [disabled]="!canCreate()">
+        <app-icon name="check" />
+      </button>
+      <button type="button" class="icon-btn btn-primary" aria-label="Crea e prova" title="Crea e prova" (click)="createDrafts(true)" [disabled]="!canCreate()">
+        <app-icon name="play" />
+      </button>
+    }
   </div>
 </section>
 
@@ -20,29 +29,36 @@
 @if (saved()) {
   <p class="banner ok">Layout salvato in questo browser.</p>
 }
-@if (metadatas.status() === 'error') {
+@if (metadatas.resource.status() === 'error') {
   <p class="banner">Non riesco a leggere i metadati da api.sne.lol.</p>
 }
 
 <section class="setup">
   <label>
     Metadato
+    <span class="meta-pick">
+      @if (metadataName()) {
+        <app-meta-icon [icon]="metadatas.icon(metadataName())" [label]="metadataName()" />
+      }
     <select #metadataSelect [value]="metadataName()" (change)="onMetadata(metadataSelect)">
-      <option value="">Scegli</option>
+      <option value="" [selected]="!metadataName()">Scegli</option>
       @for (item of metadataOptions(); track item.uuid) {
-        <option [value]="item.table_name">{{ item.description || item.table_name }}</option>
+        <option [value]="item.table_name" [selected]="item.table_name === metadataName()">{{ item.description || item.table_name }}</option>
       }
     </select>
+    </span>
   </label>
-  <div class="segmented" role="group" aria-label="Tipo pagina">
-    <button type="button" aria-label="Lista" title="Lista" [class.on]="pageType() === 'list'" (click)="setPageType('list')"><app-icon name="list" /></button>
-    <button type="button" aria-label="Edit" title="Edit" [class.on]="pageType() === 'edit'" (click)="setPageType('edit')"><app-icon name="pencil" /></button>
-    <button type="button" aria-label="View" title="View" [class.on]="pageType() === 'view'" (click)="setPageType('view')"><app-icon name="eye" /></button>
-  </div>
-  <label>
-    Nome
-    <input [value]="name()" (input)="onName($event)" placeholder="metadato edit" />
-  </label>
+  @if (id()) {
+    <div class="segmented" role="group" aria-label="Tipo pagina">
+      <button type="button" aria-label="Lista" title="Lista" [class.on]="pageType() === 'list'" (click)="setPageType('list')"><app-icon name="list" /></button>
+      <button type="button" aria-label="Edit" title="Edit" [class.on]="pageType() === 'edit'" (click)="setPageType('edit')"><app-icon name="pencil" /></button>
+      <button type="button" aria-label="View" title="View" [class.on]="pageType() === 'view'" (click)="setPageType('view')"><app-icon name="eye" /></button>
+    </div>
+    <label>
+      Nome
+      <input [value]="name()" (input)="onName($event)" placeholder="metadato edit" />
+    </label>
+  }
 </section>
 
 @if (!metadataName()) {
@@ -52,6 +68,20 @@
   </section>
 } @else if (fieldResource.isLoading()) {
   <p class="muted">Carico i field definition…</p>
+} @else if (!id()) {
+  <section class="drafts">
+    @for (draft of drafts(); track draft.kind) {
+      <label class="draft">
+        <p-checkbox [binary]="true" [ngModel]="draft.enabled" [ngModelOptions]="{ standalone: true }" (ngModelChange)="toggleDraft(draft.kind)" [inputId]="'draft-' + draft.kind" />
+        <span>{{ draftLabel(draft.kind) }}</span>
+        <input [value]="draft.name" [disabled]="!draft.enabled" (input)="renameDraft(draft.kind, $event)" />
+      </label>
+    }
+    <p class="muted">{{ fields().length }} campi inclusi. Stringa e gli altri campi un terzo, il testo la riga intera.</p>
+    @if (existingForMetadata().length) {
+      <p class="muted">Già salvati: {{ existingNames() }}</p>
+    }
+  </section>
 } @else {
   <div class="studio">
     <aside class="palette">
@@ -75,16 +105,25 @@
       @if (pageType() === 'list' && listBody()) {
         <div class="section-title">
           <h2>Colonne</h2>
-          <p>All’inizio sono tutte visibili. In lista i filtri del metadato restano tutti aperti e si usano insieme.</p>
         </div>
+        <p class="muted">Stringa, testo e TinyMCE partono da like. La data da un intervallo, il booleano da sì/no, il numero da uguale. L’immagine non si cerca.</p>
         <ol class="columns">
           @for (column of columns(); track column.fieldName) {
             <li [class.off]="!column.visible">
               <label class="check">
-                <input type="checkbox" [checked]="column.visible" (change)="toggleColumn(column.fieldName)" />
+                <p-checkbox [binary]="true" [ngModel]="column.visible" [ngModelOptions]="{ standalone: true }" (ngModelChange)="toggleColumn(column.fieldName)" />
                 <span>{{ fieldOf(column.fieldName)?.label || column.fieldName }}</span>
               </label>
               <em>{{ typeOf(column.fieldName) }}</em>
+              @if (searchOptions(column.fieldName).length > 1) {
+                <select class="search-mode" [value]="searchOf(column.fieldName)" (change)="setSearch(column.fieldName, $event)">
+                  @for (mode of searchOptions(column.fieldName); track mode) {
+                    <option [value]="mode">{{ searchLabel(mode) }}</option>
+                  }
+                </select>
+              } @else {
+                <em>{{ searchLabel(searchOf(column.fieldName)) }}</em>
+              }
               <div class="icon-row">
                 <button type="button" class="icon-btn" aria-label="Sposta su" title="Sposta su" (click)="moveColumn(column.fieldName, -1)">
                   <app-icon name="up" />
@@ -95,19 +134,7 @@
               </div>
             </li>
           }
-        </ol>
-        <div class="filter-note">
-          <h3>Filtri attivi</h3>
-          @if (activeFilters().length === 0) {
-            <p class="muted">Nessun filtro.</p>
-          } @else {
-            <ul class="chips">
-              @for (filter of activeFilters(); track filter.name) {
-                <li>{{ filter.label || filter.name }} · {{ filter.search_condition || 'eq' }}</li>
-              }
-            </ul>
-          }
-        </div>
+          </ol>
       } @else {
         <div class="section-title">
           <h2>Pagine</h2>
@@ -152,7 +179,7 @@
                       <span class="type-pill">{{ typeOf(field.fieldName) }}</span>
                     </div>
                     <label class="check">
-                      <input type="checkbox" [checked]="field.required" (change)="toggleRequired(box.id, field.fieldName)" />
+                      <p-checkbox [binary]="true" [ngModel]="field.required" [ngModelOptions]="{ standalone: true }" (ngModelChange)="toggleRequired(box.id, field.fieldName)" />
                       <span>Obbligatorio</span>
                     </label>
                     <select [value]="field.span" (change)="setSpan(box.id, field.fieldName, $event)">

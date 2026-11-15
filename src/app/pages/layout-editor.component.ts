@@ -1,31 +1,42 @@
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { logicalFieldType } from '../core/field-types';
-import { orderedColumns, placementNames, searchFieldsForList, seedBody } from '../core/layout-shape';
+import { CheckboxModule } from '@openng/optimus-ui/checkbox';
+import { defaultSpan, logicalFieldType } from '../core/field-types';
+import { orderedColumns, placementNames, resolvedSearch, searchChoices, SEARCH_LABEL, seedBody, withSearches } from '../core/layout-shape';
 import {
   FieldDefinition,
   LayoutBody,
   LayoutBox,
   LayoutDocument,
   LayoutPage,
-  Metadata,
   PageKind,
+  SearchMode,
   WizardLayoutBody,
 } from '../core/models';
 import { LayoutStore } from '../core/layout-store';
+import { MetadataCatalog } from '../core/metadata-catalog';
 import { SnelloApi } from '../core/snello-api';
 import { Icon } from '../icon';
+import { MetaIcon } from '../meta-icon';
+
+interface LayoutDraft {
+  kind: PageKind;
+  enabled: boolean;
+  name: string;
+}
 
 @Component({
   selector: 'app-layout-editor',
-  imports: [RouterLink, Icon],
+  imports: [RouterLink, FormsModule, CheckboxModule, Icon, MetaIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './layout-editor.component.html',
 })
 export class LayoutEditorComponent {
   private readonly api = inject(SnelloApi);
   private readonly store = inject(LayoutStore);
+  readonly metadatas = inject(MetadataCatalog);
   private readonly router = inject(Router);
   private readonly boundRoute = signal<string | null>(null);
 
@@ -43,17 +54,9 @@ export class LayoutEditorComponent {
   readonly saved = signal(false);
   readonly loadError = signal('');
   readonly showJson = signal(false);
+  readonly drafts = signal<LayoutDraft[]>(freshDrafts(''));
 
-  readonly metadatas = httpResource<Metadata[]>(() => this.api.metadatasRequest(), {
-    defaultValue: [],
-    parse: (value) => (Array.isArray(value) ? (value as Metadata[]) : []),
-  });
-
-  readonly metadataOptions = computed(() => {
-    const status = this.metadatas.status();
-    if (status !== 'resolved' && status !== 'local') return [];
-    return [...this.metadatas.value()].sort((left, right) => left.table_name.localeCompare(right.table_name));
-  });
+  readonly metadataOptions = computed(() => this.metadatas.list());
 
   readonly fieldResource = httpResource<FieldDefinition[]>(() => {
     const name = this.metadataName();
@@ -84,11 +87,6 @@ export class LayoutEditorComponent {
     return body ? orderedColumns(body) : [];
   });
 
-  readonly activeFilters = computed(() => {
-    const body = this.listBody();
-    return body ? searchFieldsForList(body, this.fields()) : [];
-  });
-
   readonly selectedPage = computed(() => {
     const wizard = this.wizard();
     if (!wizard) return null;
@@ -96,6 +94,15 @@ export class LayoutEditorComponent {
   });
 
   readonly usedNames = computed(() => new Set(placementNames(this.body())));
+  readonly canCreate = computed(() => {
+    if (this.id() || !this.metadataName()) return false;
+    const status = this.fieldResource.status();
+    if (status !== 'resolved' && status !== 'local') return false;
+    return this.drafts().some((draft) => draft.enabled);
+  });
+  readonly existingForMetadata = computed(() =>
+    this.store.all().filter((item) => item.metadataName === this.metadataName()),
+  );
   readonly jsonText = computed(() => JSON.stringify(this.body(), null, 2));
 
   constructor() {
@@ -103,7 +110,7 @@ export class LayoutEditorComponent {
       const routeId = this.id() ?? '';
       const presetMetadata = this.metadata();
       const presetPage = this.page();
-      const status = this.metadatas.status();
+      const status = this.metadatas.resource.status();
       if (status === 'idle' || status === 'loading' || status === 'reloading') return;
       untracked(() => {
         if (this.boundRoute() === routeId) return;
@@ -123,6 +130,7 @@ export class LayoutEditorComponent {
         }
         if (presetMetadata) {
           this.metadataName.set(presetMetadata);
+          this.drafts.set(freshDrafts(presetMetadata, presetPage === 'list' || presetPage === 'edit' || presetPage === 'view' ? presetPage : undefined));
           this.pendingSeed.set(true);
         }
       });
@@ -152,6 +160,17 @@ export class LayoutEditorComponent {
         this.pendingSeed.set(false);
       });
     });
+
+    effect(() => {
+      const fields = this.fields();
+      const body = this.body();
+      const metadata = this.metadataName();
+      if (body.kind !== 'list' || fields.length === 0) return;
+      if (fields.some((field) => field.metadata_name && field.metadata_name !== metadata)) return;
+      const next = withSearches(body, fields);
+      if (next === body) return;
+      untracked(() => this.body.set(next));
+    });
   }
 
   onName(event: Event): void {
@@ -168,8 +187,11 @@ export class LayoutEditorComponent {
     }
     this.metadataName.set(name);
     this.saved.set(false);
-    this.name.set(name ? `${name} ${this.pageType()}` : '');
-    this.pendingSeed.set(!!name);
+    this.drafts.set(freshDrafts(name));
+    if (this.id()) {
+      this.name.set(name ? `${name} ${this.pageType()}` : '');
+      this.pendingSeed.set(!!name);
+    }
   }
 
   setPageType(kind: PageKind): void {
@@ -189,6 +211,32 @@ export class LayoutEditorComponent {
   typeOf(name: string): string {
     const field = this.fieldOf(name);
     return field ? logicalFieldType(field) : 'string';
+  }
+
+  searchOf(name: string): SearchMode {
+    const column = this.columns().find((item) => item.fieldName === name);
+    return resolvedSearch(column?.search, this.fieldOf(name));
+  }
+
+  searchOptions(name: string): SearchMode[] {
+    return searchChoices(this.fieldOf(name));
+  }
+
+  searchLabel(mode: SearchMode): string {
+    return SEARCH_LABEL[mode];
+  }
+
+  setSearch(name: string, event: Event): void {
+    const search = (event.target as HTMLSelectElement).value as SearchMode;
+    if (!this.searchOptions(name).includes(search)) return;
+    this.body.update((body) => {
+      if (body.kind !== 'list') return body;
+      return {
+        kind: 'list',
+        columns: body.columns.map((column) => (column.fieldName === name ? { ...column, search } : column)),
+      };
+    });
+    this.saved.set(false);
   }
 
   toggleColumn(name: string): void {
@@ -305,7 +353,7 @@ export class LayoutEditorComponent {
       box.fields.push({
         fieldName: name,
         required: !!definition?.mandatory,
-        span: definition && logicalFieldType(definition) ? (['text', 'tinymce', 'monaco', 'realtionships', 'media', 'image', 'gmaplocation', 'gmappath'].includes(logicalFieldType(definition)) ? 12 : 6) : 6,
+        span: definition ? defaultSpan(definition) : 4,
       });
     });
   }
@@ -346,6 +394,53 @@ export class LayoutEditorComponent {
       const box = body.pages.flatMap((page) => page.boxes).find((item) => item.id === boxId);
       if (box) box.fields = box.fields.filter((field) => field.fieldName !== name);
     });
+  }
+
+  existingNames(): string {
+    return this.existingForMetadata().map((item) => item.name).join(', ');
+  }
+
+  draftLabel(kind: PageKind): string {
+    if (kind === 'list') return 'Lista';
+    if (kind === 'view') return 'View';
+    return 'Edit';
+  }
+
+  toggleDraft(kind: PageKind): void {
+    this.drafts.update((drafts) => drafts.map((draft) => (draft.kind === kind ? { ...draft, enabled: !draft.enabled } : draft)));
+  }
+
+  renameDraft(kind: PageKind, event: Event): void {
+    const name = (event.target as HTMLInputElement).value;
+    this.drafts.update((drafts) => drafts.map((draft) => (draft.kind === kind ? { ...draft, name } : draft)));
+  }
+
+  createDrafts(openPlay = false): void {
+    const metadataName = this.metadataName();
+    if (!metadataName || !this.canCreate()) return;
+    const fields = this.fields();
+    const metadata = this.metadataOptions().find((item) => item.table_name === metadataName);
+    const created: LayoutDocument[] = [];
+    for (const draft of this.drafts()) {
+      if (!draft.enabled) continue;
+      const document: LayoutDocument = {
+        id: crypto.randomUUID(),
+        name: draft.name.trim() || `${metadataName} ${draft.kind === 'list' ? 'lista' : draft.kind}`,
+        metadataName,
+        metadataUuid: metadata?.uuid ?? '',
+        pageType: draft.kind,
+        updatedAt: new Date().toISOString(),
+        body: seedBody(draft.kind, fields),
+      };
+      this.store.save(document);
+      created.push(document);
+    }
+    const target = created.find((item) => item.pageType === 'list') ?? created[0];
+    if (openPlay && target) {
+      void this.router.navigate(['/play', target.id]);
+      return;
+    }
+    void this.router.navigate(['/layouts']);
   }
 
   save(openPlay = false): void {
@@ -393,4 +488,13 @@ export class LayoutEditorComponent {
     });
     this.saved.set(false);
   }
+}
+
+function freshDrafts(table: string, only?: PageKind): LayoutDraft[] {
+  const kinds: PageKind[] = ['list', 'edit', 'view'];
+  return kinds.map((kind) => ({
+    kind,
+    enabled: only ? kind === only : true,
+    name: table ? `${table} ${kind === 'list' ? 'lista' : kind}` : '',
+  }));
 }

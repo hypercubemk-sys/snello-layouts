@@ -4,20 +4,25 @@
     <a class="icon-btn btn-primary" routerLink="/layouts" aria-label="Torna alla libreria" title="Torna alla libreria"><app-icon name="back" /></a>
   </section>
 } @else {
+  @if (!embedded()) {
   <section class="page-head">
     <div>
-      <p class="kicker">{{ layout()?.metadataName }} · {{ layout()?.pageType }}</p>
+      <p class="kicker with-icon">
+        <app-meta-icon [icon]="metadatas.icon(layout()?.metadataName || '')" [label]="layout()?.metadataName || ''" />
+        <span>{{ layout()?.metadataName }} · {{ layout()?.pageType }}</span>
+      </p>
       <h1>{{ layout()?.name }}</h1>
     </div>
     <div class="icon-row">
       @if (layout()?.pageType === 'list' && createLayout(); as edit) {
-        <a class="icon-btn btn-primary" [routerLink]="['/play', edit.id]" aria-label="Nuovo contenuto" title="Nuovo contenuto">
+        <a class="icon-btn btn-primary" [routerLink]="[]" [queryParams]="{ side: edit.id, row: null }" queryParamsHandling="merge" aria-label="Nuovo contenuto" title="Nuovo contenuto">
           <app-icon name="plus" />
         </a>
       }
       <a class="icon-btn" [routerLink]="['/layouts', layout()?.id]" aria-label="Modifica layout" title="Modifica layout"><app-icon name="pencil" /></a>
     </div>
   </section>
+  }
 
   @if (layout()?.pageType === 'list' && layout()?.body?.kind === 'list') {
     <section class="filters">
@@ -41,7 +46,7 @@
                   @for (column of columnChoices(); track column.fieldName) {
                     <li>
                       <label>
-                        <input type="checkbox" [checked]="columnOn(column.fieldName)" (change)="toggleColumn(column.fieldName)" />
+                        <p-checkbox [binary]="true" [ngModel]="columnOn(column.fieldName)" [ngModelOptions]="{ standalone: true }" (ngModelChange)="toggleColumn(column.fieldName)" />
                         <span>{{ fieldLabel(column.fieldName) }}</span>
                       </label>
                     </li>
@@ -113,7 +118,7 @@
                       } @else if (isRelation(column.fieldName)) {
                         <span class="rel-marks">
                           @for (mark of relationMarks(row[column.fieldName]); track mark.token) {
-                            <i class="rel-mark" [attr.title]="mark.name" [attr.aria-label]="mark.name">{{ mark.letter }}</i>
+                            <app-meta-icon [icon]="metadatas.icon(mark.name)" [label]="mark.name" />
                           } @empty {
                             —
                           }
@@ -133,8 +138,9 @@
                         @for (operation of operations(); track operation.id) {
                           <a
                             class="icon-btn"
-                            [routerLink]="['/play', operation.id]"
-                            [queryParams]="{ record: recordId(row) }"
+                            [routerLink]="[]"
+                            [queryParams]="{ side: operation.id, row: recordId(row) }"
+                            queryParamsHandling="merge"
                             [attr.aria-label]="operation.name"
                             [attr.title]="operation.name">
                             <app-icon [name]="operationIcon(operation.pageType)" />
@@ -162,6 +168,27 @@
         currentPageReportTemplate="{first}–{last} di {totalRecords}"
         (onPageChange)="changePage($event)" />
     </section>
+    @if (sideLayout(); as side) {
+      <div class="drawer-back" (click)="closeSide()">
+        <section class="drawer" role="dialog" aria-modal="true" [attr.aria-label]="side.name" (click)="$event.stopPropagation()">
+          <header class="drawer-head">
+            <div>
+              <p class="kicker with-icon">
+                <app-meta-icon [icon]="metadatas.icon(side.metadataName)" [label]="side.metadataName" />
+                <span>{{ side.metadataName }} · {{ sideRecord() ? side.pageType : 'nuovo' }}</span>
+              </p>
+              <h2>{{ side.name }}</h2>
+            </div>
+            <button type="button" class="icon-btn" aria-label="Chiudi" title="Chiudi" (click)="closeSide()">
+              <app-icon name="close" />
+            </button>
+          </header>
+          <div class="drawer-body">
+            <ng-container [ngComponentOutlet]="entryOutlet" [ngComponentOutletInputs]="sideInputs()" />
+          </div>
+        </section>
+      </div>
+    }
   } @else {
     <section class="wizard">
       @if (recordKey() && record.isLoading()) {

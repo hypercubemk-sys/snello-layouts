@@ -3,9 +3,11 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { httpResource } from '@angular/common/http';
 import { FieldType, FieldTypeConfig, FormlyModule } from '@ngx-formly/core';
 import { joinKeyName, joinLabelName, joinSelect, SnelloApi } from '../core/snello-api';
+import { MetadataCatalog } from '../core/metadata-catalog';
 import { FieldDefinition, Metadata, SelectOption } from '../core/models';
 import { definitionOf, relationMark, rowsOf, splitCsv } from './kit';
 import { Icon } from '../icon';
+import { MetaIcon } from '../meta-icon';
 
 @Component({
   selector: 'app-formly-join',
@@ -542,13 +544,13 @@ export class MultilookupField extends FieldType<FieldTypeConfig> implements OnIn
 
 @Component({
   selector: 'app-formly-relationships',
-  imports: [FormlyModule, Icon],
+  imports: [FormlyModule, Icon, MetaIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="chips">
       @for (item of chips(); track item) {
         <span>
-          <i class="rel-mark" [attr.title]="mark(item).name" [attr.aria-label]="mark(item).name">{{ mark(item).letter }}</i>
+          <app-meta-icon [icon]="catalog.icon(mark(item).name)" [label]="mark(item).name" />
           @if (!props.readonly) {
             <button type="button" [attr.aria-label]="'Togli ' + mark(item).name" [attr.title]="'Togli ' + mark(item).name" (click)="remove(item)">×</button>
           }
@@ -567,12 +569,17 @@ export class MultilookupField extends FieldType<FieldTypeConfig> implements OnIn
             <strong>Seleziona relazione</strong>
             <button type="button" class="icon-btn" aria-label="Chiudi" title="Chiudi" (click)="open.set(false)"><app-icon name="close" /></button>
           </header>
-          <select [value]="metadataName()" (change)="metadataName.set($any($event.target).value)">
-            <option value="">Metadato</option>
-            @for (metadata of metadatas(); track metadata.uuid) {
-              <option [value]="metadata.table_name">{{ metadata.table_name }}</option>
+          <div class="meta-pick">
+            @if (metadataName()) {
+              <app-meta-icon [icon]="catalog.icon(metadataName())" [label]="metadataName()" />
             }
-          </select>
+            <select [value]="metadataName()" (change)="metadataName.set($any($event.target).value)">
+              <option value="" [selected]="!metadataName()">Metadato</option>
+              @for (metadata of metadatas(); track metadata.uuid) {
+                <option [value]="metadata.table_name" [selected]="metadata.table_name === metadataName()">{{ metadata.description || metadata.table_name }}</option>
+              }
+            </select>
+          </div>
           <input placeholder="Filtra i record caricati" [value]="query()" (input)="query.set($any($event.target).value)" />
           @if (rows.isLoading()) {
             <p class="hint">Carico i record…</p>
@@ -592,14 +599,11 @@ export class MultilookupField extends FieldType<FieldTypeConfig> implements OnIn
 export class RelationshipsField extends FieldType<FieldTypeConfig> implements OnInit {
   private readonly api = inject(SnelloApi);
   private readonly destroyRef = inject(DestroyRef);
+  readonly catalog = inject(MetadataCatalog);
   readonly open = signal(false);
   readonly metadataName = signal('');
   readonly query = signal('');
   readonly chips = signal<string[]>([]);
-  private readonly metadataResource = httpResource<Metadata[]>(
-    () => (this.open() ? this.api.metadatasRequest() : undefined),
-    { defaultValue: [], parse: (value) => (Array.isArray(value) ? (value as Metadata[]) : []) },
-  );
   readonly rows = httpResource<Record<string, unknown>[]>(
     () => {
       const name = this.metadataName();
@@ -622,9 +626,7 @@ export class RelationshipsField extends FieldType<FieldTypeConfig> implements On
   }
 
   metadatas(): Metadata[] {
-    const status = this.metadataResource.status();
-    const rows = status === 'resolved' || status === 'local' ? this.metadataResource.value() : [];
-    return rows.filter((item) => !!item.table_name).sort((left, right) => left.table_name.localeCompare(right.table_name));
+    return this.catalog.list();
   }
 
   choose(row: Record<string, unknown>): void {
@@ -634,7 +636,8 @@ export class RelationshipsField extends FieldType<FieldTypeConfig> implements On
     const keyValue = row[keyName] ?? row['uuid'];
     if (keyValue == null) return;
     const token = `${metadata.table_name}:${String(keyValue)}`;
-    if (!this.chips().includes(token)) this.write([...this.chips(), token]);
+    if (this.props['search'] === true) this.write([token]);
+    else if (!this.chips().includes(token)) this.write([...this.chips(), token]);
     this.open.set(false);
   }
 

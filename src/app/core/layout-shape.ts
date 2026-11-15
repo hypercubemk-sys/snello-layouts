@@ -4,6 +4,7 @@ import {
   LayoutBody,
   LayoutDocument,
   ListLayoutBody,
+  SearchMode,
   WizardLayoutBody,
 } from './models';
 
@@ -16,6 +17,7 @@ export function seedList(fields: FieldDefinition[]): ListLayoutBody {
         fieldName: field.name ?? '',
         visible: true,
         order,
+        search: defaultSearch(field),
       })),
   };
 }
@@ -57,41 +59,79 @@ export function visibleColumns(body: ListLayoutBody) {
   return orderedColumns(body).filter((column) => column.visible);
 }
 
-const NOT_A_FILTER = new Set(['image', 'media', 'realtionships', 'tinymce', 'monaco', 'gmaplocation', 'gmappath']);
+const TEXT_SEARCH = new Set(['string', 'text', 'tinymce']);
+const DATE_SEARCH = new Set(['date', 'datetime', 'time']);
+const BOOL_SEARCH = new Set(['boolean', 'passivation']);
+const NUMBER_SEARCH = new Set(['number', 'decimal']);
 
-export function searchFieldsForList(_body: ListLayoutBody, fields: FieldDefinition[]): FieldDefinition[] {
-  return fields
-    .filter((field) => {
-      if (!field.name) return false;
-      if (field.searchable) return true;
-      return !NOT_A_FILTER.has(logicalFieldType(field));
-    })
-    .flatMap((field) => expandRange(field));
+export const SEARCH_LABEL: Record<SearchMode, string> = {
+  like: 'Like',
+  eq: 'Uguale',
+  range: 'Intervallo',
+  boolean: 'Booleano',
+  none: 'Nessuna',
+};
+
+export function defaultSearch(field: FieldDefinition): SearchMode {
+  const logical = logicalFieldType(field);
+  if (logical === 'image') return 'none';
+  if (TEXT_SEARCH.has(logical)) return 'like';
+  if (DATE_SEARCH.has(logical)) return 'range';
+  if (BOOL_SEARCH.has(logical)) return 'boolean';
+  return 'eq';
 }
 
-function expandRange(field: FieldDefinition): FieldDefinition[] {
-  const temporal = field.type === 'date' || field.type === 'datetime';
-  if (field.search_condition !== 'range' || !temporal || !field.name) {
-    return [field];
-  }
+export function searchChoices(field: FieldDefinition | undefined): SearchMode[] {
+  const logical = field ? logicalFieldType(field) : '';
+  if (logical === 'image') return ['none'];
+  if (TEXT_SEARCH.has(logical)) return ['like', 'eq'];
+  if (NUMBER_SEARCH.has(logical)) return ['eq', 'range'];
+  return [field ? defaultSearch(field) : 'eq'];
+}
 
-  const label = field.label || field.name;
-  return [
-    {
-      ...field,
-      name: `${field.name}__min`,
-      label: `${label} min`,
-      search_condition: 'gte',
-      search_field_name: `${field.name}_gte`,
-    },
-    {
-      ...field,
-      name: `${field.name}__max`,
-      label: `${label} max`,
-      search_condition: 'lte',
-      search_field_name: `${field.name}_lte`,
-    },
-  ];
+export function resolvedSearch(current: string | undefined, field: FieldDefinition | undefined): SearchMode {
+  const choices = searchChoices(field);
+  return choices.find((mode) => mode === current) ?? choices[0] ?? 'eq';
+}
+
+export function withSearches(body: ListLayoutBody, fields: FieldDefinition[]): ListLayoutBody {
+  let changed = false;
+  const columns = body.columns.map((column) => {
+    const search = resolvedSearch(column.search, fields.find((field) => field.name === column.fieldName));
+    if (column.search === search) return column;
+    changed = true;
+    return { ...column, search };
+  });
+  return changed ? { kind: 'list', columns } : body;
+}
+
+export function searchFieldsForList(body: ListLayoutBody, fields: FieldDefinition[]): FieldDefinition[] {
+  return orderedColumns(body).flatMap((column) => {
+    const field = fields.find((item) => item.name === column.fieldName);
+    if (!field?.name) return [];
+    const mode = resolvedSearch(column.search, field);
+    if (mode === 'none') return [];
+    return materializeSearch(field, mode);
+  });
+}
+
+function materializeSearch(field: FieldDefinition, mode: SearchMode): FieldDefinition[] {
+  const name = field.name ?? '';
+  const label = field.label || name;
+  if (mode === 'range') {
+    const dated = DATE_SEARCH.has(logicalFieldType(field));
+    return [
+      { ...field, name: `${name}__min`, label: dated ? label : `${label} da`, search_condition: 'gte', search_field_name: `${name}_gte` },
+      { ...field, name: `${name}__max`, label: dated ? label : `${label} a`, search_condition: 'lte', search_field_name: `${name}_lte` },
+    ];
+  }
+  if (mode === 'like') {
+    return [{ ...field, search_condition: 'containss', search_field_name: `${name}_containss` }];
+  }
+  if (mode === 'boolean') {
+    return [{ ...field, search_condition: 'boolean', search_field_name: name }];
+  }
+  return [{ ...field, search_condition: 'eq', search_field_name: name }];
 }
 
 export function filterParams(fields: FieldDefinition[], value: Record<string, unknown>): Record<string, string> {
@@ -100,6 +140,11 @@ export function filterParams(fields: FieldDefinition[], value: Record<string, un
     const name = field.name;
     if (!name) continue;
     const raw = value[name];
+    if (field.search_condition === 'boolean') {
+      if (raw === true || raw === 1 || raw === '1' || raw === 'true') params[paramName(field)] = '1';
+      else if (raw === false || raw === 0 || raw === '0' || raw === 'false') params[paramName(field)] = '0';
+      continue;
+    }
     if (raw == null || raw === '' || raw === false) continue;
     const serialized = Array.isArray(raw) ? raw.map((item) => String(item)).join(',') : String(raw);
     if (!serialized) continue;

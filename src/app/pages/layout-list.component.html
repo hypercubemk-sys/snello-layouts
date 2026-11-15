@@ -8,7 +8,7 @@
   </a>
 </section>
 
-@if (metadatas.status() === 'error') {
+@if (metadatas.resource.status() === 'error') {
   <p class="banner">Non riesco a leggere i metadati da api.sne.lol.</p>
 } @else {
   <p class="stat">{{ metadataCount() }} metadati disponibili sul sito di prova.</p>
@@ -23,10 +23,12 @@
   <div class="cards">
     @for (layout of layouts(); track layout.id) {
       <article class="card">
-        <p class="kicker">{{ layout.metadataName }} · {{ layout.pageType }}</p>
-        <h2>{{ layout.name }}</h2>
+        <p class="card-title">
+          <app-meta-icon [icon]="metadatas.icon(layout.metadataName)" [label]="layout.metadataName" [title]="layout.name" />
+          <span>{{ layout.metadataName }} · {{ layout.pageType }}</span>
+        </p>
         <div class="card-foot">
-          <time [attr.datetime]="layout.updatedAt">{{ layout.updatedAt | date: 'dd/MM/yy HH:mm' }}</time>
+          <time [attr.datetime]="layout.updatedAt">{{ layout.updatedAt | date: 'dd/MM/yy' }}</time>
           <div class="icon-row">
             @if (pendingId() === layout.id) {
               <span class="confirm-ask">Eliminare?</span>

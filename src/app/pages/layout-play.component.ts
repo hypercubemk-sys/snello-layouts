@@ -1,7 +1,8 @@
+import { NgComponentOutlet } from '@angular/common';
 import { HttpClient, httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, effect, HostListener, inject, input, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { logicalFieldType, staticOptions } from '../core/field-types';
 import { filterFormFields, wizardFields } from '../core/layout-formly';
@@ -15,13 +16,16 @@ import {
 } from '../core/layout-shape';
 import { FieldDefinition, Metadata } from '../core/models';
 import { LayoutStore } from '../core/layout-store';
+import { MetadataCatalog } from '../core/metadata-catalog';
 import { SnelloApi, joinKeyName, joinLabelName, joinSelect } from '../core/snello-api';
 import { relationMark, rowsOf, splitCsv } from '../formly/kit';
-import { FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { CheckboxModule } from '@openng/optimus-ui/checkbox';
 import { FormlyModule } from '@ngx-formly/core';
 import { Paginator, PaginatorState } from '@openng/optimus-ui/paginator';
 import { ListValue, linkedLabelKey } from './list-value';
 import { Icon } from '../icon';
+import { MetaIcon } from '../meta-icon';
 
 const MENU_FIELD = new Set(['select', 'multiselect', 'join', 'lookup', 'multijoin', 'multilookup']);
 const LINKED = new Set(['join', 'lookup', 'multijoin', 'multilookup', 'select', 'multiselect']);
@@ -37,16 +41,22 @@ interface LabelBatch {
 
 @Component({
   selector: 'app-layout-play',
-  imports: [RouterLink, ReactiveFormsModule, FormlyModule, Icon, Paginator, ListValue],
+  imports: [RouterLink, FormsModule, ReactiveFormsModule, FormlyModule, CheckboxModule, Icon, MetaIcon, Paginator, ListValue, NgComponentOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './layout-play.component.html',
+  host: { '[class.play-embedded]': 'embedded()' },
 })
 export class LayoutPlayComponent {
   private readonly api = inject(SnelloApi);
   private readonly http = inject(HttpClient);
   private readonly store = inject(LayoutStore);
+  readonly metadatas = inject(MetadataCatalog);
+  private readonly router = inject(Router);
   private readonly query = toSignal(inject(ActivatedRoute).queryParamMap);
   readonly id = input.required<string>();
+  readonly embedded = input(false);
+  readonly rowKey = input('');
+  readonly entryOutlet = LayoutPlayComponent;
   readonly layout = computed(() => this.store.find(this.id()));
   readonly filtersOpen = signal(false);
   readonly columnsOpen = signal(false);
@@ -114,6 +124,14 @@ export class LayoutPlayComponent {
   });
 
   readonly createLayout = computed(() => this.operations().find((item) => item.pageType === 'edit') ?? null);
+  readonly sideLayoutId = computed(() => (this.embedded() || this.layout()?.pageType !== 'list' ? '' : (this.query()?.get('side') ?? '')));
+  readonly sideRecord = computed(() => (this.sideLayoutId() ? (this.query()?.get('row') ?? '') : ''));
+  readonly sideLayout = computed(() => this.store.find(this.sideLayoutId()));
+  readonly sideInputs = computed(() => ({
+    id: this.sideLayoutId(),
+    embedded: true,
+    rowKey: this.sideRecord(),
+  }));
 
   readonly operations = computed(() => {
     const layout = this.layout();
@@ -215,8 +233,31 @@ export class LayoutPlayComponent {
 
   constructor() {
     effect(() => {
+      if (this.embedded()) return;
+      const layout = this.layout();
+      if (!layout || layout.pageType === 'list') return;
+      const list = this.store.all().find((item) => item.metadataName === layout.metadataName && item.pageType === 'list');
+      if (!list) return;
+      const row = this.query()?.get('record') ?? '';
+      untracked(() => {
+        void this.router.navigate(['/play', list.id], {
+          queryParams: { side: layout.id, row: row || null },
+          replaceUrl: true,
+        });
+      });
+    });
+
+    effect((onCleanup) => {
+      if (this.embedded() || this.layout()?.pageType !== 'list') return;
+      document.body.style.overflow = this.sideLayoutId() ? 'hidden' : '';
+      onCleanup(() => {
+        document.body.style.overflow = '';
+      });
+    });
+
+    effect(() => {
       const id = this.id();
-      const record = this.query()?.get('record') ?? '';
+      const record = this.embedded() ? this.rowKey() : this.routeRecord();
       untracked(() => {
         this.step.set(0);
         this.pageStart.set(0);
@@ -279,6 +320,18 @@ export class LayoutPlayComponent {
     });
   }
 
+  closeSide(): void {
+    void this.router.navigate([], {
+      queryParams: { side: null, row: null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  @HostListener('document:keydown.escape')
+  closeSideOnEscape(): void {
+    if (!this.embedded() && this.sideLayoutId()) this.closeSide();
+  }
+
   applyFilters(): void {
     const value = this.filterForm().getRawValue() as Record<string, unknown>;
     this.writeFilterModel(value);
@@ -301,16 +354,34 @@ export class LayoutPlayComponent {
     this.filtersOpen.set(false);
   }
 
+  private chipLabel(field: FieldDefinition): string {
+    const label = field.label || field.name || '';
+    const logical = logicalFieldType(field);
+    const dated = logical === 'date' || logical === 'datetime' || logical === 'time';
+    if (!dated) return label;
+    if (field.search_condition === 'gte') return `${label} ≥`;
+    if (field.search_condition === 'lte') return `${label} ≤`;
+    return label;
+  }
+
   private async chips(value: Record<string, unknown>): Promise<{ name: string; label: string; value: string }[]> {
     const chips: { name: string; label: string; value: string }[] = [];
     for (const field of this.searchDefinitions()) {
       const name = field.name;
       if (!name) continue;
       const raw = value[name];
+      if (field.search_condition === 'boolean') {
+        if (raw == null || raw === '') continue;
+        const on = raw === true || raw === 1 || raw === '1' || raw === 'true';
+        const off = raw === false || raw === 0 || raw === '0' || raw === 'false';
+        if (!on && !off) continue;
+        chips.push({ name, label: field.label || name, value: on ? 'sì' : 'no' });
+        continue;
+      }
       if (raw == null || raw === '' || raw === false) continue;
       const text = await this.readableValue(field, raw);
       if (!text) continue;
-      chips.push({ name, label: field.label || name, value: text });
+      chips.push({ name, label: this.chipLabel(field), value: text });
     }
     return chips;
   }
@@ -468,6 +539,12 @@ export class LayoutPlayComponent {
 
   relationMarks(value: unknown): { token: string; name: string; letter: string }[] {
     return splitCsv(value).map((token) => ({ token, ...relationMark(token) }));
+  }
+
+  private routeRecord(): string {
+    const layout = this.layout();
+    if (!layout || layout.pageType === 'list') return '';
+    return this.query()?.get('record') ?? '';
   }
 
   recordId(row: Record<string, unknown>): string {

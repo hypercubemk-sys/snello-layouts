@@ -56,10 +56,8 @@ export function logicalFieldType(field: FieldDefinition): string {
   return 'string';
 }
 
-const WIDE = new Set(['text', 'tinymce', 'monaco', 'realtionships', 'media', 'image', 'gmaplocation', 'gmappath']);
-
-export function defaultSpan(field: FieldDefinition): 12 | 6 {
-  return WIDE.has(logicalFieldType(field)) ? 12 : 6;
+export function defaultSpan(field: FieldDefinition): 12 | 4 {
+  return logicalFieldType(field) === 'text' ? 12 : 4;
 }
 
 export function sortFields(fields: FieldDefinition[]): FieldDefinition[] {

@@ -18,6 +18,7 @@
     "@angular/forms": "^22.2.0",
     "@angular/platform-browser": "^22.2.0",
     "@angular/router": "^22.2.0",
+    "@fortawesome/fontawesome-free": "^6.7.2",
     "@ngx-formly/core": "^11.2.0",
     "@openng/icons": "^1.0.0",
     "@openng/optimus-ui": "^2.0.2",

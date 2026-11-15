@@ -11,7 +11,9 @@ import { FieldWrapper } from '@ngx-formly/core';
         @if (props.required) {
           <em>*</em>
         }
-        <span class="type-pill">{{ typeLabel }}</span>
+        @if (!search && typeLabel) {
+          <span class="type-pill">{{ typeLabel }}</span>
+        }
       </div>
       <ng-container #fieldComponent></ng-container>
       @if (props.description) {
@@ -24,6 +26,10 @@ import { FieldWrapper } from '@ngx-formly/core';
   `,
 })
 export class FieldShell extends FieldWrapper {
+  get search(): boolean {
+    return this.props['search'] === true;
+  }
+
   get typeLabel(): string {
     const label = this.props['typeLabel'];
     return typeof label === 'string' ? label : '';

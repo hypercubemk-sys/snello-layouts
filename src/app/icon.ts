@@ -38,6 +38,14 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         @case ('list-ul') { <path d="M3 4.5h.1M3 8h.1M3 11.5h.1M6 4.5h7M6 8h7M6 11.5h7" /> }
         @case ('list-ol') { <path d="M3 4.2h1.2V6M3 8.2h2M5 8.2c0 .8-2 .8-2 1.6h2M6 4.5h7M6 8h7M6 11.5h7" /> }
         @case ('clear') { <path d="M4 8h8M6 5.5 4 8l2 2.5M10 5.5 12 8l-2 2.5" /> }
+        @case ('equals') { <path d="M2.5 5.5h11M2.5 10.5h11" /> }
+        @case ('like') {
+          <circle cx="5" cy="4.6" r="1.8" />
+          <path d="M12.4 3 3.6 13" />
+          <circle cx="11" cy="11.4" r="1.8" />
+        }
+        @case ('from') { <path d="M3.2 3.6 11 8 3.2 12.4M3.2 14.2h8.4" /> }
+        @case ('to') { <path d="M12.8 3.6 5 8l7.8 4.4M4.4 14.2h8.4" /> }
       }
     </svg>
   `,

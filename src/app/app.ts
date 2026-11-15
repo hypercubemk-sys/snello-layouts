@@ -8,6 +8,7 @@ import { Icon } from './icon';
 
 interface SessionUser {
   name: string;
+  initial: string;
   username: string;
   email: string;
   realm: string;
@@ -77,8 +78,10 @@ export class App {
       | { preferred_username?: string; name?: string; given_name?: string; email?: string; azp?: string }
       | undefined;
     const username = parsed?.preferred_username ?? '';
+    const name = parsed?.name || parsed?.given_name || username || 'Account';
     return {
-      name: parsed?.name || parsed?.given_name || username || 'Account',
+      name,
+      initial: name.trim().charAt(0).toUpperCase() || 'A',
       username,
       email: parsed?.email ?? '',
       realm: 'snello',

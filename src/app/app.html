@@ -1,27 +1,47 @@
 <div class="shell" [class.nav-open]="menuOpen()">
+  @if (menuOpen()) {
+    <button type="button" class="nav-backdrop" aria-label="Chiudi menu" (click)="closeMenus()"></button>
+  }
   <aside>
-    <a class="brand" routerLink="/layouts" (click)="closeMenus()">
-      <span>Snello</span>
-      <strong>Layouts</strong>
+    <a class="rail-mark" routerLink="/layouts" aria-label="Snello" (click)="closeMenus()">
+      <img src="snello-logo.svg" alt="" />
     </a>
-    <nav>
-      <a routerLink="/layouts" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenus()">Libreria</a>
-      <a routerLink="/layouts/new" routerLinkActive="active" (click)="closeMenus()">Nuovo layout</a>
+    <nav id="app-nav">
+      <a routerLink="/layouts" title="Libreria" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenus()">
+        <app-icon name="home" />
+        <span>Libreria</span>
+      </a>
+      <a routerLink="/layouts/new" title="Nuovo layout" routerLinkActive="active" (click)="closeMenus()">
+        <app-icon name="plus" />
+        <span>Nuovo layout</span>
+      </a>
     </nav>
-    <p class="aside-note">Configuratore protetto da Keycloak, realm snello, client snello-admin. I layout restano in questo browser.</p>
   </aside>
   <div class="workspace">
     <header class="topbar">
-      <a class="topbar-logo" routerLink="/layouts" aria-label="Snello">
-        <img src="snello-logo.svg" alt="Snello" />
-      </a>
-      <div class="topbar-tools">
-        <button type="button" class="icon-btn menu-toggle" aria-label="Menu" [attr.aria-expanded]="menuOpen()" (click)="toggleMenu()">
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4h11M2.5 8h11M2.5 12h11" /></svg>
+      <div class="topbar-start">
+        <button type="button" class="icon-btn menu-toggle" aria-label="Menu" aria-controls="app-nav" [attr.aria-expanded]="menuOpen()" (click)="toggleMenu()">
+          @if (menuOpen()) {
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4L4 12" /></svg>
+          } @else {
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4h11M2.5 8h11M2.5 12h11" /></svg>
+          }
         </button>
+        <a class="topbar-logo" routerLink="/layouts" aria-label="Snello" (click)="closeMenus()">
+          <img src="snello-logo.svg" alt="Snello" />
+        </a>
+        <nav class="crumbs" aria-label="Percorso">
+          <a routerLink="/layouts" (click)="closeMenus()">Snello</a>
+          @for (crumb of crumbs(); track crumb.label) {
+            <span class="crumb-sep" aria-hidden="true">/</span>
+            <span aria-current="page">{{ crumb.label }}</span>
+          }
+        </nav>
+      </div>
+      <div class="topbar-tools">
         <div class="user-wrap">
-          <button type="button" class="icon-btn" aria-label="Utente" [attr.aria-expanded]="userOpen()" (click)="toggleUser()">
-            <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5.2" r="2.2" /><path d="M3.2 13.2c.7-2.2 2.4-3.3 4.8-3.3s4.1 1.1 4.8 3.3" /></svg>
+          <button type="button" class="avatar" [attr.aria-label]="profile.name" [attr.aria-expanded]="userOpen()" (click)="toggleUser()">
+            {{ profile.initial }}
           </button>
           @if (userOpen()) {
             <div class="user-tip" role="tooltip">
@@ -47,15 +67,6 @@
       </div>
     </header>
     <main>
-      <nav class="crumbs" aria-label="Percorso">
-        <a routerLink="/layouts" aria-label="Homepage" title="Homepage" (click)="closeMenus()">
-          <app-icon name="home" />
-        </a>
-        @for (crumb of crumbs(); track crumb.label) {
-          <span class="crumb-sep" aria-hidden="true">/</span>
-          <span aria-current="page">{{ crumb.label }}</span>
-        }
-      </nav>
       <router-outlet />
     </main>
   </div>

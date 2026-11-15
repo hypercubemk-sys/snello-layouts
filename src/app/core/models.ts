@@ -58,10 +58,13 @@ export interface LayoutPage {
   boxes: LayoutBox[];
 }
 
+export type SearchMode = 'like' | 'eq' | 'range' | 'boolean' | 'none';
+
 export interface ListColumn {
   fieldName: string;
   visible: boolean;
   order: number;
+  search?: SearchMode;
 }
 
 export interface ListLayoutBody {
