@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, si
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CheckboxModule } from '@openng/optimus-ui/checkbox';
-import { defaultSpan, logicalFieldType } from '../core/field-types';
+import { defaultSpan, fieldTypeIcon, logicalFieldType } from '../core/field-types';
 import { orderedColumns, placementNames, resolvedSearch, searchChoices, SEARCH_LABEL, seedBody, withSearches } from '../core/layout-shape';
 import {
   FieldDefinition,
@@ -211,6 +211,10 @@ export class LayoutEditorComponent {
   typeOf(name: string): string {
     const field = this.fieldOf(name);
     return field ? logicalFieldType(field) : 'string';
+  }
+
+  typeIcon(name: string): string {
+    return fieldTypeIcon(this.typeOf(name));
   }
 
   searchOf(name: string): SearchMode {

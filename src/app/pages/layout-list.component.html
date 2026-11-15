@@ -61,12 +61,22 @@
 <section class="catalog">
   <h2>Field type Formly</h2>
   <p>Gli stessi tipi di snello-admin, registrati come type Formly e piazzabili nei layout.</p>
-  <ul>
-    @for (type of catalog; track type.id) {
-      <li>
-        <strong>{{ type.label }}</strong>
-        <span>{{ type.hint }}</span>
-      </li>
+  <div class="catalog-groups">
+    @for (group of groups; track group.name) {
+      <section class="catalog-group">
+        <h3>{{ group.name }}</h3>
+        <ul>
+          @for (type of group.types; track type.id) {
+            <li>
+              <strong class="type-mark">
+                <app-icon [name]="type.icon" />
+                {{ type.label }}
+              </strong>
+              <span>{{ type.hint }}</span>
+            </li>
+          }
+        </ul>
+      </section>
     }
-  </ul>
+  </div>
 </section>

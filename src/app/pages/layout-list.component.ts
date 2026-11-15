@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { FIELD_TYPE_CATALOG } from '../core/field-types';
+import { fieldTypeCatalogGroups } from '../core/field-types';
 import { LayoutDocument } from '../core/models';
 import { LayoutStore } from '../core/layout-store';
 import { MetadataCatalog } from '../core/metadata-catalog';
@@ -16,7 +16,7 @@ import { MetaIcon } from '../meta-icon';
 })
 export class LayoutListComponent {
   private readonly store = inject(LayoutStore);
-  readonly catalog = FIELD_TYPE_CATALOG;
+  readonly groups = fieldTypeCatalogGroups();
   readonly metadatas = inject(MetadataCatalog);
   readonly layouts = this.store.all;
   readonly pendingId = signal<string | null>(null);

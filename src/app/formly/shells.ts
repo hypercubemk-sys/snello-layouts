@@ -1,8 +1,11 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { FieldWrapper } from '@ngx-formly/core';
+import { fieldTypeIcon } from '../core/field-types';
+import { Icon } from '../icon';
 
 @Component({
   selector: 'app-field-shell',
+  imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="field" [class.is-error]="showError">
@@ -12,7 +15,10 @@ import { FieldWrapper } from '@ngx-formly/core';
           <em>*</em>
         }
         @if (!search && typeLabel) {
-          <span class="type-pill">{{ typeLabel }}</span>
+          <span class="type-pill type-mark">
+            <app-icon [name]="typeIcon" />
+            {{ typeLabel }}
+          </span>
         }
       </div>
       <ng-container #fieldComponent></ng-container>
@@ -33,6 +39,10 @@ export class FieldShell extends FieldWrapper {
   get typeLabel(): string {
     const label = this.props['typeLabel'];
     return typeof label === 'string' ? label : '';
+  }
+
+  get typeIcon(): string {
+    return fieldTypeIcon(this.typeLabel);
   }
 }
 

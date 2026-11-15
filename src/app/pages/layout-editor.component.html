@@ -94,7 +94,10 @@
               [disabled]="pageType() !== 'list' && usedNames().has(field.name || '')"
               (click)="pageType() === 'list' ? toggleColumn(field.name || '') : addField(field.name || '')">
               <strong>{{ field.label || field.name }}</strong>
-              <span>{{ typeOf(field.name || '') }}</span>
+              <span class="type-mark">
+                <app-icon [name]="typeIcon(field.name || '')" />
+                {{ typeOf(field.name || '') }}
+              </span>
             </button>
           </li>
         }
@@ -114,7 +117,10 @@
                 <p-checkbox [binary]="true" [ngModel]="column.visible" [ngModelOptions]="{ standalone: true }" (ngModelChange)="toggleColumn(column.fieldName)" />
                 <span>{{ fieldOf(column.fieldName)?.label || column.fieldName }}</span>
               </label>
-              <em>{{ typeOf(column.fieldName) }}</em>
+              <em class="type-mark">
+                <app-icon [name]="typeIcon(column.fieldName)" />
+                {{ typeOf(column.fieldName) }}
+              </em>
               @if (searchOptions(column.fieldName).length > 1) {
                 <select class="search-mode" [value]="searchOf(column.fieldName)" (change)="setSearch(column.fieldName, $event)">
                   @for (mode of searchOptions(column.fieldName); track mode) {
@@ -176,7 +182,10 @@
                   <li class="field-card" [class.span-12]="field.span === 12" [class.span-6]="field.span === 6" [class.span-4]="field.span === 4">
                     <div>
                       <strong>{{ fieldOf(field.fieldName)?.label || field.fieldName }}</strong>
-                      <span class="type-pill">{{ typeOf(field.fieldName) }}</span>
+                      <span class="type-pill type-mark">
+                        <app-icon [name]="typeIcon(field.fieldName)" />
+                        {{ typeOf(field.fieldName) }}
+                      </span>
                     </div>
                     <label class="check">
                       <p-checkbox [binary]="true" [ngModel]="field.required" [ngModelOptions]="{ standalone: true }" (ngModelChange)="toggleRequired(box.id, field.fieldName)" />

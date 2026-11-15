@@ -200,7 +200,11 @@ main { padding: 28px 32px 40px; }
 .card h2, .empty h2 { font-size: 15px; }
 .catalog h2 { font-size: 16px; }
 .catalog { margin-top: 28px; }
-.catalog ul { list-style: none; padding: 0; margin: 16px 0 0; }
+.catalog-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 16px; }
+.catalog-group { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.catalog-group h3 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: lowercase; }
+.catalog ul, .catalog-group ul { list-style: none; padding: 0; margin: 8px 0 0; }
+.catalog .catalog-group ul { display: block; }
 .catalog li, .columns li, .editor-box li {
   display: flex;
   justify-content: space-between;
@@ -273,6 +277,30 @@ textarea { resize: vertical; }
 .check { display: flex; align-items: center; gap: 8px; }
 .check input, .column-pop input, .draft p-checkbox { width: auto; }
 p-checkbox { display: inline-flex; vertical-align: middle; }
+p-checkbox .p-checkbox-box {
+  background: var(--card);
+  border-color: var(--line);
+  border-radius: 6px;
+  box-shadow: none;
+}
+p-checkbox:not(.p-disabled):has(.p-checkbox-input:hover) .p-checkbox-box {
+  border-color: var(--line);
+}
+p-checkbox:not(.p-disabled):has(.p-checkbox-input:focus-visible) .p-checkbox-box {
+  border-color: var(--ink);
+  box-shadow: none;
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+p-checkbox.p-checkbox-checked .p-checkbox-box,
+p-checkbox.p-checkbox-checked:not(.p-disabled):has(.p-checkbox-input:hover) .p-checkbox-box {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+p-checkbox.p-checkbox-checked .p-checkbox-icon,
+p-checkbox.p-checkbox-checked:not(.p-disabled):has(.p-checkbox-input:hover) .p-checkbox-icon {
+  color: var(--accent-ink);
+}
 p-checkbox input[type='checkbox'] {
   width: auto;
   height: auto;
@@ -285,7 +313,7 @@ p-checkbox input[type='checkbox'] {
 p-datepicker { display: flex; width: 100%; }
 p-datepicker .p-datepicker-input,
 p-datepicker .p-datepicker-dropdown {
-  background: #fff;
+  background: var(--card);
   color: var(--ink);
   border-color: var(--line);
 }
@@ -294,7 +322,7 @@ p-select { display: flex; width: 100%; }
 p-select.p-select,
 p-select .p-select-label,
 p-select .p-select-dropdown {
-  background: #fff;
+  background: var(--card);
   color: var(--ink);
   border-color: var(--line);
 }
@@ -366,7 +394,9 @@ formly-field.span-4 { grid-column: span 4; }
   color: var(--ink);
   pointer-events: none;
 }
-.field-head { display: flex; gap: 8px; align-items: baseline; }
+.field-head { display: flex; gap: 8px; align-items: center; }
+.type-mark { display: inline-flex; align-items: center; gap: 4px; }
+.type-mark .glyph { color: currentColor; }
 .field-head em { color: var(--accent); font-style: normal; }
 .field.is-error input, .field.is-error select, .field.is-error textarea { border-color: var(--danger); }
 .hint, .error { font-size: 12px; }
