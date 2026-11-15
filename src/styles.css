@@ -79,6 +79,24 @@ p { margin: 0; }
 .user-tip span { color: var(--muted); font-size: 12px; margin-top: 6px; }
 .user-tip .btn { justify-self: start; margin-top: 8px; }
 main { padding: 28px; }
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -6px 0 18px;
+  min-height: 24px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.crumbs a {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+}
+.crumbs a:hover { color: var(--ink); }
+.crumbs [aria-current='page'] { color: var(--ink); }
+.crumb-sep { color: #bdbdbd; }
 
 .page-head, .section-title, .row-actions, .setup, .page-tools, .record-bar {
   display: flex;
@@ -105,6 +123,7 @@ main { padding: 28px; }
 .row-actions { align-items: center; justify-content: flex-start; flex-wrap: wrap; margin-top: 8px; }
 .card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
 .card-foot time { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.confirm-ask { color: var(--ink); font-size: 12px; font-weight: 640; white-space: nowrap; }
 .applied { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
 .applied li { display: inline-flex; align-items: baseline; gap: 6px; max-width: 100%; padding: 4px 8px; border: 1px solid var(--line); border-radius: 999px; background: #f7f7f7; font-size: 12px; }
 .applied span { color: var(--muted); }
@@ -427,7 +446,23 @@ formly-field.span-4 { grid-column: span 4; }
 .table-scroll { overflow: auto; }
 .data { width: 100%; border-collapse: collapse; }
 .data th, .data td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; font-size: 14px; }
+.data .ops { width: 1%; white-space: nowrap; vertical-align: middle; }
 .data th { font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.sort-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.sort-head .glyph svg { width: 12px; height: 12px; }
 .stepper { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
 .filter-input { margin-bottom: 8px; }
 formly-form.filter-grid { display: block; }

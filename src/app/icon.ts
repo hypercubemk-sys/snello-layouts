@@ -24,7 +24,9 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         @case ('sliders') { <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11M6 3.2v2.6M10.5 6.7v2.6M7.5 10.2v2.6" /> }
         @case ('logout') { <path d="M6 3.5H3.5v9H6M7 8h6M10.5 5.5 13 8l-2.5 2.5" /> }
         @case ('list') { <path d="M3 4.5h10M3 8h10M3 11.5h10" /> }
+        @case ('home') { <path d="M2.5 7.2 8 2.8l5.5 4.4V13a.8.8 0 0 1-.8.8H3.3a.8.8 0 0 1-.8-.8z" /><path d="M6.4 13.8V9.2h3.2v4.6" /> }
         @case ('eye') { <path d="M1.5 8S4 4.5 8 4.5 14.5 8 14.5 8 12 11.5 8 11.5 1.5 8 1.5 8z" /><circle cx="8" cy="8" r="1.6" /> }
+        @case ('info') { <circle cx="8" cy="8" r="5.2" /><path d="M8 7.3v3.8M8 5.2h.01" /> }
         @case ('image') { <path d="M2.5 3.5h11v9h-11zM2.5 10l3-2.5 2 1.5 2.5-3 3 4" /> }
         @case ('upload') { <path d="M8 10.5V3.5M5.5 6 8 3.5 10.5 6M3.5 12.5h9" /> }
         @case ('link') { <path d="M6.5 9.5 9.5 6.5M6 7.5 4.8 8.7a2.2 2.2 0 0 0 3.1 3.1L9 10.7M10 8.5l1.2-1.2a2.2 2.2 0 0 0-3.1-3.1L7 5.3" /> }

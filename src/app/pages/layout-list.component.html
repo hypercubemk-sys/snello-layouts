@@ -28,15 +28,27 @@
         <div class="card-foot">
           <time [attr.datetime]="layout.updatedAt">{{ layout.updatedAt | date: 'dd/MM/yy HH:mm' }}</time>
           <div class="icon-row">
-            <a class="icon-btn" [routerLink]="['/layouts', layout.id]" aria-label="Modifica" title="Modifica">
-              <app-icon name="pencil" />
-            </a>
-            <a class="icon-btn btn-primary" [routerLink]="['/play', layout.id]" aria-label="Prova" title="Prova">
-              <app-icon name="play" />
-            </a>
-            <button type="button" class="icon-btn" aria-label="Elimina" title="Elimina" (click)="remove(layout)">
-              <app-icon name="trash" />
-            </button>
+            @if (pendingId() === layout.id) {
+              <span class="confirm-ask">Eliminare?</span>
+              <button type="button" class="icon-btn btn-primary" aria-label="Conferma eliminazione" title="Conferma eliminazione" (click)="confirmRemove(layout)">
+                <app-icon name="check" />
+              </button>
+              <button type="button" class="icon-btn" aria-label="Annulla" title="Annulla" (click)="cancelRemove()">
+                <app-icon name="close" />
+              </button>
+            } @else {
+              <a class="icon-btn" [routerLink]="['/layouts', layout.id]" aria-label="Modifica" title="Modifica">
+                <app-icon name="pencil" />
+              </a>
+              @if (layout.pageType === 'list') {
+                <a class="icon-btn btn-primary" [routerLink]="['/play', layout.id]" aria-label="Prova" title="Prova">
+                  <app-icon name="play" />
+                </a>
+              }
+              <button type="button" class="icon-btn" aria-label="Elimina" title="Elimina" (click)="askRemove(layout)">
+                <app-icon name="trash" />
+              </button>
+            }
           </div>
         </div>
       </article>

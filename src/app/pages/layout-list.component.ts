@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { httpResource } from '@angular/common/http';
 import { FIELD_TYPE_CATALOG } from '../core/field-types';
@@ -23,14 +23,24 @@ export class LayoutListComponent {
     defaultValue: [],
     parse: (value) => (Array.isArray(value) ? (value as Metadata[]) : []),
   });
+  readonly pendingId = signal<string | null>(null);
   readonly metadataCount = computed(() => {
     const status = this.metadatas.status();
     if (status !== 'resolved' && status !== 'local') return 0;
     return this.metadatas.value().length;
   });
 
-  remove(layout: LayoutDocument): void {
-    if (!window.confirm(`Eliminare «${layout.name}»?`)) return;
+  askRemove(layout: LayoutDocument): void {
+    this.pendingId.set(layout.id);
+  }
+
+  cancelRemove(): void {
+    this.pendingId.set(null);
+  }
+
+  confirmRemove(layout: LayoutDocument): void {
+    if (this.pendingId() !== layout.id) return;
+    this.pendingId.set(null);
     this.store.remove(layout.id);
   }
 }

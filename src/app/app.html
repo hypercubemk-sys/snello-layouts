@@ -47,6 +47,15 @@
       </div>
     </header>
     <main>
+      <nav class="crumbs" aria-label="Percorso">
+        <a routerLink="/layouts" aria-label="Homepage" title="Homepage" (click)="closeMenus()">
+          <app-icon name="home" />
+        </a>
+        @for (crumb of crumbs(); track crumb.label) {
+          <span class="crumb-sep" aria-hidden="true">/</span>
+          <span aria-current="page">{{ crumb.label }}</span>
+        }
+      </nav>
       <router-outlet />
     </main>
   </div>

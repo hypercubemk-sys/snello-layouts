@@ -1,6 +1,7 @@
 import { HttpClient, httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, effect, HostListener, inject, input, signal, untracked } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { logicalFieldType, staticOptions } from '../core/field-types';
 import { filterFormFields, wizardFields } from '../core/layout-formly';
@@ -44,6 +45,7 @@ export class LayoutPlayComponent {
   private readonly api = inject(SnelloApi);
   private readonly http = inject(HttpClient);
   private readonly store = inject(LayoutStore);
+  private readonly query = toSignal(inject(ActivatedRoute).queryParamMap);
   readonly id = input.required<string>();
   readonly layout = computed(() => this.store.find(this.id()));
   readonly filtersOpen = signal(false);
@@ -53,8 +55,11 @@ export class LayoutPlayComponent {
   readonly filterModel: Record<string, unknown> = {};
   readonly step = signal(0);
   readonly pageStart = signal(0);
-  readonly pageSize = signal(20);
+  readonly pageSize = signal(10);
   readonly pageSizes = [10, 20, 50];
+  readonly total = signal(0);
+  readonly sortField = signal<string | null>(null);
+  readonly sortDir = signal<'asc' | 'desc'>('asc');
   readonly recordKey = signal('');
   readonly filterParams = signal<Record<string, string>>({});
   readonly result = signal<Record<string, unknown> | null>(null);
@@ -108,6 +113,17 @@ export class LayoutPlayComponent {
     return choices.filter((column) => allowed.has(column.fieldName));
   });
 
+  readonly createLayout = computed(() => this.operations().find((item) => item.pageType === 'edit') ?? null);
+
+  readonly operations = computed(() => {
+    const layout = this.layout();
+    if (!layout || layout.pageType !== 'list') return [];
+    const rank = (kind: string) => (kind === 'edit' ? 0 : 1);
+    return this.store.all()
+      .filter((item) => item.metadataName === layout.metadataName && item.id !== layout.id && (item.pageType === 'edit' || item.pageType === 'view'))
+      .sort((left, right) => rank(left.pageType) - rank(right.pageType) || left.name.localeCompare(right.name, 'it'));
+  });
+
   readonly searchDefinitions = computed(() => {
     const layout = this.layout();
     if (!layout || layout.body.kind !== 'list') return [];
@@ -139,11 +155,14 @@ export class LayoutPlayComponent {
   readonly rows = httpResource<Record<string, unknown>[]>(() => {
     const layout = this.layout();
     if (!layout || layout.body.kind !== 'list') return undefined;
-    return this.api.recordsRequest(layout.metadataName, {
+    const params: Record<string, string | number | boolean> = {
       _start: this.pageStart(),
       _limit: this.pageSize(),
       ...this.filterParams(),
-    });
+    };
+    const sort = this.sortField();
+    if (sort) params['_sort'] = `${sort}:${this.sortDir()}`;
+    return this.api.recordsRequest(layout.metadataName, params);
   }, {
     defaultValue: [],
     parse: (value) => (Array.isArray(value) ? (value as Record<string, unknown>[]) : []),
@@ -182,29 +201,6 @@ export class LayoutPlayComponent {
       .filter((group) => group.ids.length > 0);
   });
 
-  readonly total = computed(() => {
-    const status = this.rows.status();
-    if (status !== 'resolved' && status !== 'local') return 0;
-    const headers = this.rows.headers();
-    const raw = headers?.get('x-total-count') ?? headers?.get('size');
-    return raw ? Number(raw) : this.rows.value().length;
-  });
-
-  readonly pickerRows = computed(() => {
-    const status = this.picker.status();
-    if (status !== 'resolved' && status !== 'local') return [];
-    return this.picker.value();
-  });
-
-  readonly picker = httpResource<Record<string, unknown>[]>(() => {
-    const layout = this.layout();
-    if (!layout || layout.pageType === 'list') return undefined;
-    return this.api.recordsRequest(layout.metadataName, { _start: 0, _limit: 40 });
-  }, {
-    defaultValue: [],
-    parse: (value) => (Array.isArray(value) ? (value as Record<string, unknown>[]) : []),
-  });
-
   readonly record = httpResource<Record<string, unknown> | null>(() => {
     const layout = this.layout();
     const key = this.recordKey();
@@ -220,22 +216,25 @@ export class LayoutPlayComponent {
   constructor() {
     effect(() => {
       const id = this.id();
+      const record = this.query()?.get('record') ?? '';
       untracked(() => {
         this.step.set(0);
         this.pageStart.set(0);
-        this.pageSize.set(20);
+        this.pageSize.set(10);
+        this.total.set(0);
+        this.sortField.set(null);
+        this.sortDir.set('asc');
         this.chosenFields.set(readListColumns(id));
         this.columnsOpen.set(false);
         this.filterParams.set({});
         this.appliedFilters.set([]);
         this.filtersOpen.set(false);
         this.clearFilterModel();
-        this.recordKey.set('');
+        this.recordKey.set(record);
         this.result.set(null);
         this.replaceModel({});
         this.formTick.update((value) => value + 1);
       });
-      return id;
     });
 
     effect(() => {
@@ -251,6 +250,15 @@ export class LayoutPlayComponent {
         this.result.set(null);
         this.formTick.update((value) => value + 1);
       });
+    });
+
+    effect(() => {
+      const status = this.rows.status();
+      if (status !== 'resolved' && status !== 'local' && status !== 'reloading') return;
+      const raw = this.rows.headers()?.get('x-total-count');
+      if (raw == null || raw === '') return;
+      const count = Number(raw);
+      if (Number.isFinite(count)) this.total.set(count);
     });
 
     effect(() => {
@@ -399,12 +407,26 @@ export class LayoutPlayComponent {
   }
 
   changePage(event: PaginatorState): void {
-    this.pageStart.set(event.first ?? 0);
-    this.pageSize.set(event.rows ?? this.pageSize());
+    const start = event.first ?? 0;
+    const size = event.rows ?? this.pageSize();
+    if (start === this.pageStart() && size === this.pageSize()) return;
+    this.pageStart.set(start);
+    this.pageSize.set(size);
   }
 
-  chooseRecord(event: Event): void {
-    this.recordKey.set((event.target as HTMLSelectElement).value);
+  sortBy(name: string): void {
+    if (this.sortField() === name) {
+      this.sortDir.set(this.sortDir() === 'asc' ? 'desc' : 'asc');
+    } else {
+      this.sortField.set(name);
+      this.sortDir.set('asc');
+    }
+    this.pageStart.set(0);
+  }
+
+  ariaSort(name: string): 'ascending' | 'descending' | 'none' {
+    if (this.sortField() !== name) return 'none';
+    return this.sortDir() === 'asc' ? 'ascending' : 'descending';
   }
 
   previousStep(): void {
@@ -448,19 +470,14 @@ export class LayoutPlayComponent {
     return splitCsv(value).map((token) => ({ token, ...relationMark(token) }));
   }
 
-  recordLabel(row: Record<string, unknown>): string {
-    const metadata = this.currentMetadata();
-    const extra = metadata?.table_key_addition;
-    const key = metadata?.table_key || 'uuid';
-    const label = extra ? row[extra] : undefined;
-    const id = row[key] ?? row['uuid'];
-    return label != null && String(label).trim() ? String(label) : String(id ?? '');
-  }
-
   recordId(row: Record<string, unknown>): string {
     const metadata = this.currentMetadata();
     const key = metadata?.table_key || 'uuid';
     return String(row[key] ?? row['uuid'] ?? '');
+  }
+
+  operationIcon(kind: string): string {
+    return kind === 'view' ? 'info' : 'pencil';
   }
 
   private async loadLabels(batches: LabelBatch[], ticket: number): Promise<void> {

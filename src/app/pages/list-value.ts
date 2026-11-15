@@ -30,6 +30,7 @@ export class ListValue {
     if (!field) return clip(value);
     const logical = logicalFieldType(field);
     if (logical === 'tinymce') return plainExcerpt(String(value)) || '—';
+    if (field.name === 'creation_date') return dateOnly(value);
     if (field.join_table_name && LINKED.has(logical)) return this.linked(field);
     if (logical === 'select' || logical === 'multiselect') {
       const options = new Map(staticOptions(field).map((option) => [option.value, option.label]));
@@ -48,6 +49,11 @@ export class ListValue {
     if (parts.some((part) => !part)) return this.pending() ? '…' : parts.map((part) => part || '—').join(', ');
     return parts.join(', ');
   }
+}
+
+function dateOnly(value: unknown): string {
+  const date = String(value).trim().split(/[T ]/)[0];
+  return date || '—';
 }
 
 function clip(value: unknown): string {

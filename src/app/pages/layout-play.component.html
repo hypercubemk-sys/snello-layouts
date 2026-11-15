@@ -9,7 +9,14 @@
       <p class="kicker">{{ layout()?.metadataName }} · {{ layout()?.pageType }}</p>
       <h1>{{ layout()?.name }}</h1>
     </div>
-    <a class="icon-btn" [routerLink]="['/layouts', layout()?.id]" aria-label="Modifica layout" title="Modifica layout"><app-icon name="pencil" /></a>
+    <div class="icon-row">
+      @if (layout()?.pageType === 'list' && createLayout(); as edit) {
+        <a class="icon-btn btn-primary" [routerLink]="['/play', edit.id]" aria-label="Nuovo contenuto" title="Nuovo contenuto">
+          <app-icon name="plus" />
+        </a>
+      }
+      <a class="icon-btn" [routerLink]="['/layouts', layout()?.id]" aria-label="Modifica layout" title="Modifica layout"><app-icon name="pencil" /></a>
+    </div>
   </section>
 
   @if (layout()?.pageType === 'list' && layout()?.body?.kind === 'list') {
@@ -82,7 +89,17 @@
             <thead>
               <tr>
                 @for (column of columns(); track column.fieldName) {
-                  <th>{{ fieldLabel(column.fieldName) }}</th>
+                  <th [attr.aria-sort]="ariaSort(column.fieldName)">
+                    <button type="button" class="sort-head" (click)="sortBy(column.fieldName)">
+                      <span>{{ fieldLabel(column.fieldName) }}</span>
+                      @if (sortField() === column.fieldName) {
+                        <app-icon [name]="sortDir() === 'asc' ? 'up' : 'down'" />
+                      }
+                    </button>
+                  </th>
+                }
+                @if (operations().length) {
+                  <th class="ops">Operazioni</th>
                 }
               </tr>
             </thead>
@@ -110,10 +127,26 @@
                       }
                     </td>
                   }
+                  @if (operations().length) {
+                    <td class="ops">
+                      <div class="icon-row">
+                        @for (operation of operations(); track operation.id) {
+                          <a
+                            class="icon-btn"
+                            [routerLink]="['/play', operation.id]"
+                            [queryParams]="{ record: recordId(row) }"
+                            [attr.aria-label]="operation.name"
+                            [attr.title]="operation.name">
+                            <app-icon [name]="operationIcon(operation.pageType)" />
+                          </a>
+                        }
+                      </div>
+                    </td>
+                  }
                 </tr>
               } @empty {
                 <tr>
-                  <td [attr.colspan]="columns().length || 1">Nessun record</td>
+                  <td [attr.colspan]="columns().length + (operations().length ? 1 : 0) || 1">Nessun record</td>
                 </tr>
               }
             </tbody>
@@ -130,22 +163,10 @@
         (onPageChange)="changePage($event)" />
     </section>
   } @else {
-    <section class="record-bar">
-      <label>
-        Record di prova
-        <select [value]="recordKey()" (change)="chooseRecord($event)">
-          <option value="">Vuoto</option>
-          @for (row of pickerRows(); track recordId(row)) {
-            <option [value]="recordId(row)">{{ recordLabel(row) }}</option>
-          }
-        </select>
-      </label>
-      @if (record.isLoading()) {
+    <section class="wizard">
+      @if (recordKey() && record.isLoading()) {
         <p class="muted">Carico il record…</p>
       }
-    </section>
-
-    <section class="wizard">
       <div class="stepper">
         <span>Passo {{ step() + 1 }} di {{ pageCount() }}</span>
         <strong>{{ pageTitle() }}</strong>
