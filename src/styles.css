@@ -384,7 +384,7 @@ p-panel .p-panel-header-actions .p-button {
 }
 .field-card {
   display: grid;
-  gap: 4px;
+  gap: 8px;
   align-content: start;
   min-width: 0;
   padding: 8px;
@@ -393,14 +393,22 @@ p-panel .p-panel-header-actions .p-button {
   background: #fff;
   font-size: 13px;
 }
+.editor-box .field-card {
+  display: grid;
+  justify-content: stretch;
+  align-items: start;
+  border-bottom: 0;
+}
 .field-card-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .field-card-name strong { min-width: 0; overflow-wrap: anywhere; }
+.field-card-options { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .field-card.span-12 { grid-column: span 12; }
 .field-card.span-6 { grid-column: span 6; }
 .field-card.span-4 { grid-column: span 4; }
 .field-card .card-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .field-card select { width: 100%; }
 .field-card select.span-select { width: 5.75rem; }
+.field-card select.show-if-select { width: 11rem; max-width: 100%; }
 .editor-box-head input, .page-tools input { max-width: 280px; }
 .step-tabs { margin: 12px 0; }
 .json-toggle { margin-top: 16px; }
@@ -790,7 +798,11 @@ a.icon-btn {
   color: #404040;
   background: transparent;
 }
-.icon-btn:hover, a.icon-btn:hover { background: #f2f2f2; }
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.icon-btn:disabled:hover { background: transparent; }
 .topbar-tools .icon-btn { width: 32px; height: 32px; }
 .icon-btn.btn-primary { background: #171717; color: #fff; border-color: #171717; }
 .icon-btn.btn-primary:hover { background: #000; }

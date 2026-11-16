@@ -6,35 +6,39 @@ import { RUNTIME_CONFIG } from './runtime-config';
 @Injectable({ providedIn: 'root' })
 export class SnelloApi {
   private readonly config = inject(RUNTIME_CONFIG);
-  readonly base = this.config.apiBase.replace(/\/$/, '');
+  readonly records = trimSlash(this.config.api_service_path);
+  readonly metadatas = trimSlash(this.config.metadata_api_path);
+  readonly dataList = trimSlash(this.config.data_list_api_path);
+  readonly documents = trimSlash(this.config.document_api_path);
+  readonly layouts = trimSlash(this.config.layouts_api_path);
 
   metadatasRequest(): HttpResourceRequest {
     return {
-      url: `${this.base}/metadatas`,
+      url: this.metadatas,
       params: { _limit: 100000 },
     };
   }
 
   metadataRequest(tableName: string): HttpResourceRequest {
     return {
-      url: `${this.base}/metadatas`,
+      url: this.metadatas,
       params: { table_name: tableName, _limit: 1 },
     };
   }
 
   fieldsRequest(metadataName: string): HttpResourceRequest {
-    return { url: `${this.base}/datalist/metadata/${metadataName}/fielddefinitions` };
+    return { url: `${this.dataList}/metadata/${metadataName}/fielddefinitions` };
   }
 
   recordsRequest(table: string, params: Record<string, string | number | boolean>): HttpResourceRequest {
     return {
-      url: `${this.base}/${table}`,
+      url: `${this.records}/${table}`,
       params,
     };
   }
 
   recordRequest(table: string, id: string): HttpResourceRequest {
-    return { url: `${this.base}/${table}/${encodeURIComponent(id)}` };
+    return { url: `${this.records}/${table}/${encodeURIComponent(id)}` };
   }
 
   joinRequest(field: FieldDefinition, query = '', limit = 50): HttpResourceRequest | undefined {
@@ -49,14 +53,14 @@ export class SnelloApi {
       select_fields: select,
     };
     if (query.trim()) params[`${label}_containss`] = query.trim();
-    return { url: `${this.base}/${table}`, params };
+    return { url: `${this.records}/${table}`, params };
   }
 
   recordsByKeys(table: string, key: string, ids: string[], select: string): HttpResourceRequest | undefined {
     const unique = [...new Set(ids.map((id) => id.trim()).filter((id) => id.length > 0))];
     if (!table || unique.length === 0) return undefined;
     return {
-      url: `${this.base}/${table}`,
+      url: `${this.records}/${table}`,
       params: {
         _start: 0,
         _limit: unique.length,
@@ -74,16 +78,20 @@ export class SnelloApi {
       _sort: 'creation_date:desc',
     };
     if (search.trim()) params['original_name_containss'] = search.trim();
-    return { url: `${this.base}/documents`, params };
+    return { url: this.documents, params };
   }
 
   documentRequest(uuid: string): HttpResourceRequest {
-    return { url: `${this.base}/documents/${encodeURIComponent(uuid)}` };
+    return { url: `${this.documents}/${encodeURIComponent(uuid)}` };
   }
 
   documentUrl(uuid: string): string {
-    return `${this.base}/documents/${uuid}/download`;
+    return `${this.documents}/${uuid}/download`;
   }
+}
+
+function trimSlash(value: string): string {
+  return value.replace(/\/$/, '');
 }
 
 export function joinKeyName(field: FieldDefinition | null): string {

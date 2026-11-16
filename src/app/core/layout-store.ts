@@ -45,20 +45,20 @@ export class LayoutStore {
   }
 
   async remove(id: string): Promise<void> {
-    await firstValueFrom(this.http.delete(`${this.api.base}/layouts/${encodeURIComponent(id)}`, { responseType: 'text' }));
+    await firstValueFrom(this.http.delete(`${this.api.layouts}/${encodeURIComponent(id)}`, { responseType: 'text' }));
     this.documents.update((current) => current.filter((item) => item.id !== id));
   }
 
   private async fetchAll(): Promise<LayoutDocument[]> {
     const value = await firstValueFrom(
-      this.http.get<unknown>(`${this.api.base}/layouts`, { params: { _limit: '100000' } }),
+      this.http.get<unknown>(this.api.layouts, { params: { _limit: '100000' } }),
     );
     const rows = Array.isArray(value) ? value : [];
     return rows.map(fromApi).filter((item): item is LayoutDocument => item !== null);
   }
 
   private async write(document: LayoutDocument, exists: boolean): Promise<LayoutDocument> {
-    const url = `${this.api.base}/layouts`;
+    const url = this.api.layouts;
     const request = exists
       ? this.http.put<unknown>(`${url}/${encodeURIComponent(document.id)}`, toApi(document))
       : this.http.post<unknown>(url, toApi(document));

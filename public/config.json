@@ -1,8 +1,13 @@
 {
-  "apiBase": "https://api.sne.lol/api",
-  "keycloak": {
+  "api_service_path": "https://api.sne.lol/api",
+  "metadata_api_path": "https://api.sne.lol/api/metadatas",
+  "data_list_api_path": "https://api.sne.lol/api/datalist",
+  "document_api_path": "https://api.sne.lol/api/documents",
+  "layouts_api_path": "https://api.sne.lol/api/layouts",
+  "keycloakConfig": {
     "url": "https://accounts.kayak.love/",
     "realm": "alphasnello",
     "clientId": "snello-admin"
-  }
+  },
+  "scope": "openid"
 }

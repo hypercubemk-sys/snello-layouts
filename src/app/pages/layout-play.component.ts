@@ -10,6 +10,7 @@ import {
   coerceModel,
   filterParams,
   orderedColumns,
+  modelFieldNames,
   placementNames,
   searchFieldsForList,
   serializeModel,
@@ -304,7 +305,7 @@ export class LayoutPlayComponent {
       if (!key || !data || !layout || layout.body.kind !== 'wizard') return;
       const fields = fieldsReady ? this.fieldResource.value() : [];
       untracked(() => {
-        this.replaceModel(coerceModel(data, fields, placementNames(layout.body)));
+        this.replaceModel(coerceModel(data, fields, modelFieldNames(layout.body)));
         this.result.set(null);
         this.formTick.update((value) => value + 1);
       });
@@ -554,6 +555,7 @@ export class LayoutPlayComponent {
   }
 
   previousStep(): void {
+    if (this.pageCount() <= 1 || this.step() === 0) return;
     this.step.update((value) => Math.max(0, value - 1));
   }
 
@@ -562,11 +564,20 @@ export class LayoutPlayComponent {
     this.step.update((value) => Math.min(this.pageCount() - 1, value + 1));
   }
 
-  submit(): void {
+  showSource(): void {
     const layout = this.layout();
-    if (!layout || layout.body.kind !== 'wizard') return;
-    if (layout.pageType !== 'view' && !this.touchAll()) return;
-    this.result.set(serializeModel(this.model, this.definitions(), placementNames(layout.body)));
+    if (!layout || layout.body.kind !== 'wizard' || this.openedAt() !== '/data') return;
+    if (this.result()) {
+      this.result.set(null);
+      return;
+    }
+    if (layout.pageType !== 'view') this.touchAll();
+    this.result.set(this.outgoingPayload());
+    queueMicrotask(() => document.querySelector('.drawer pre.code, .wizard pre.code')?.scrollIntoView({ block: 'nearest' }));
+  }
+
+  submit(): void {
+    this.showSource();
   }
 
   fieldLabel(name: string): string {
@@ -686,6 +697,25 @@ export class LayoutPlayComponent {
     if (!layout || layout.body.kind !== 'wizard') return [];
     const page = layout.body.pages[this.step()];
     return page ? page.boxes.flatMap((box) => box.fields.map((field) => field.fieldName)) : [];
+  }
+
+  private outgoingPayload(): Record<string, unknown> {
+    const layout = this.layout();
+    if (!layout || layout.body.kind !== 'wizard') return {};
+    const edited = serializeModel(this.model, this.definitions(), placementNames(layout.body));
+    for (const key of Object.keys(edited)) {
+      if (edited[key] === undefined) edited[key] = null;
+    }
+    const stored = this.storedRecord();
+    return stored ? { ...stored, ...edited } : edited;
+  }
+
+  private storedRecord(): Record<string, unknown> | null {
+    if (!this.recordKey()) return null;
+    const status = this.record.status();
+    if (status !== 'resolved' && status !== 'local') return null;
+    const value = this.record.value();
+    return value && typeof value === 'object' ? value : null;
   }
 
   private replaceModel(next: Record<string, unknown>): void {

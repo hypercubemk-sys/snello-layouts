@@ -12,5 +12,5 @@ export const routes: Routes = [
   { path: 'layouts/:id', component: LayoutEditorComponent },
   { path: 'data', component: DataLayoutsComponent },
   { path: 'data/:id', component: LayoutPlayComponent },
-  { path: 'play/:id', component: LayoutPlayComponent },
+  { path: 'play/:id', redirectTo: 'data/:id' },
 ];

@@ -6,18 +6,12 @@
   <div class="row-actions">
     <a class="icon-btn" routerLink="/layouts" aria-label="Library" title="Library"><app-icon name="back" /></a>
     @if (id()) {
-      <button type="button" class="icon-btn" aria-label="Save" title="Save" (click)="save(false)" [disabled]="!metadataName()">
+      <button type="button" class="icon-btn btn-primary" aria-label="Save" title="Save" (click)="save()" [disabled]="!metadataName()">
         <app-icon name="check" />
-      </button>
-      <button type="button" class="icon-btn btn-primary" aria-label="Save and play" title="Save and play" (click)="save(true)" [disabled]="!metadataName()">
-        <app-icon name="play" />
       </button>
     } @else {
-      <button type="button" class="icon-btn" aria-label="Create" title="Create" (click)="createDrafts(false)" [disabled]="!canCreate()">
+      <button type="button" class="icon-btn btn-primary" aria-label="Create" title="Create" (click)="createDrafts()" [disabled]="!canCreate()">
         <app-icon name="check" />
-      </button>
-      <button type="button" class="icon-btn btn-primary" aria-label="Create and play" title="Create and play" (click)="createDrafts(true)" [disabled]="!canCreate()">
-        <app-icon name="play" />
       </button>
     }
   </div>
@@ -186,25 +180,41 @@
                       </span>
                       <strong>{{ fieldOf(field.fieldName)?.label || field.fieldName }}</strong>
                     </div>
-                    <label class="check">
-                      <p-checkbox [binary]="true" [ngModel]="field.required" [ngModelOptions]="{ standalone: true }" (ngModelChange)="toggleRequired(box.id, field.fieldName)" />
-                      <span>Required</span>
-                    </label>
-                    <select class="span-select" [value]="field.span" (change)="setSpan(box.id, field.fieldName, $event)">
-                      <option value="12">Full</option>
-                      <option value="6">Half</option>
-                      <option value="4">Third</option>
-                    </select>
-                    <div class="card-actions icon-row">
-                      <button type="button" class="icon-btn" aria-label="Move up" title="Move up" (click)="moveField(box.id, field.fieldName, -1)">
-                        <app-icon name="up" />
-                      </button>
-                      <button type="button" class="icon-btn" aria-label="Move down" title="Move down" (click)="moveField(box.id, field.fieldName, 1)">
-                        <app-icon name="down" />
-                      </button>
-                      <button type="button" class="icon-btn" aria-label="Remove" title="Remove" (click)="removeField(box.id, field.fieldName)">
-                        <app-icon name="minus" />
-                      </button>
+                    <div class="field-card-options">
+                      @if (pageType() !== 'view') {
+                        <label class="check">
+                          <p-checkbox [binary]="true" [ngModel]="field.required" [ngModelOptions]="{ standalone: true }" (ngModelChange)="toggleRequired(box.id, field.fieldName)" />
+                          <span>Required</span>
+                        </label>
+                      }
+                      <label class="check" title="Shown only when the linked field has a value">
+                        <p-checkbox [binary]="true" [ngModel]="!!field.showIf" [ngModelOptions]="{ standalone: true }" (ngModelChange)="setShowIf(box.id, field.fieldName, $event)" />
+                        <span>Show if</span>
+                      </label>
+                      @if (field.showIf) {
+                        <select class="show-if-select" aria-label="Show if field" (change)="setShowIfField(box.id, field.fieldName, $event)">
+                          <option value="" [selected]="!field.showIfField">Choose</option>
+                          @for (other of showIfChoices(field.fieldName, field.showIfField); track other.name) {
+                            <option [value]="other.name" [selected]="field.showIfField === other.name">{{ other.label || other.name }}</option>
+                          }
+                        </select>
+                      }
+                      <select class="span-select" [value]="field.span" (change)="setSpan(box.id, field.fieldName, $event)">
+                        <option value="12">Full</option>
+                        <option value="6">Half</option>
+                        <option value="4">Third</option>
+                      </select>
+                      <div class="card-actions icon-row">
+                        <button type="button" class="icon-btn" aria-label="Move up" title="Move up" (click)="moveField(box.id, field.fieldName, -1)">
+                          <app-icon name="up" />
+                        </button>
+                        <button type="button" class="icon-btn" aria-label="Move down" title="Move down" (click)="moveField(box.id, field.fieldName, 1)">
+                          <app-icon name="down" />
+                        </button>
+                        <button type="button" class="icon-btn" aria-label="Remove" title="Remove" (click)="removeField(box.id, field.fieldName)">
+                          <app-icon name="minus" />
+                        </button>
+                      </div>
                     </div>
                   </li>
                 }

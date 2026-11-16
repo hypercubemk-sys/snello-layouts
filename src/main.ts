@@ -6,7 +6,7 @@ import { RuntimeConfig } from './app/core/models';
 fetch('/config.json')
   .then((response) => {
     if (!response.ok) {
-      throw new Error('Impossibile leggere config.json');
+      throw new Error('Can\'t read config.json');
     }
     return response.json() as Promise<RuntimeConfig>;
   })

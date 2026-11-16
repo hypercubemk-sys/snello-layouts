@@ -18,10 +18,11 @@ export function buildAppConfig(config: RuntimeConfig): ApplicationConfig {
       provideBrowserGlobalErrorListeners(),
       { provide: RUNTIME_CONFIG, useValue: config },
       provideKeycloak({
-        config: config.keycloak,
+        config: config.keycloakConfig,
         initOptions: {
           onLoad: 'login-required',
           checkLoginIframe: false,
+          ...(config.scope ? { scope: config.scope } : {}),
         },
       }),
       provideRouter(routes, withComponentInputBinding()),

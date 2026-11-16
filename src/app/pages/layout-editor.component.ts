@@ -377,6 +377,35 @@ export class LayoutEditorComponent {
     });
   }
 
+  showIfChoices(name: string, current: string | null | undefined): FieldDefinition[] {
+    const choices = this.fields().filter((field) => !!field.name && field.name !== name);
+    if (current && !choices.some((field) => field.name === current)) {
+      return [{ name: current, label: current }, ...choices];
+    }
+    return choices;
+  }
+
+  setShowIf(boxId: string, name: string, enabled: boolean): void {
+    const current = this.wizard()?.pages.flatMap((page) => page.boxes).find((box) => box.id === boxId)?.fields.find((item) => item.fieldName === name);
+    if (!current || !!current.showIf === enabled) return;
+    this.patchWizard((body) => {
+      const field = body.pages.flatMap((page) => page.boxes).find((box) => box.id === boxId)?.fields.find((item) => item.fieldName === name);
+      if (!field) return;
+      field.showIf = enabled;
+      if (!enabled) field.showIfField = null;
+    });
+  }
+
+  setShowIfField(boxId: string, name: string, event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.patchWizard((body) => {
+      const field = body.pages.flatMap((page) => page.boxes).find((box) => box.id === boxId)?.fields.find((item) => item.fieldName === name);
+      if (!field) return;
+      field.showIf = true;
+      field.showIfField = value || null;
+    });
+  }
+
   setSpan(boxId: string, name: string, event: Event): void {
     const raw = (event.target as HTMLSelectElement).value;
     const span = raw === '4' ? 4 : raw === '6' ? 6 : 12;
@@ -427,7 +456,7 @@ export class LayoutEditorComponent {
     this.drafts.update((drafts) => drafts.map((draft) => (draft.kind === kind ? { ...draft, name } : draft)));
   }
 
-  createDrafts(openPlay = false): void {
+  createDrafts(): void {
     const metadataName = this.metadataName();
     if (!metadataName || !this.canCreate()) return;
     const fields = this.fields();
@@ -445,10 +474,10 @@ export class LayoutEditorComponent {
         body: seedBody(draft.kind, fields),
       });
     }
-    void this.persist(created, openPlay);
+    void this.persist(created);
   }
 
-  save(openPlay = false): void {
+  save(): void {
     const metadataName = this.metadataName();
     if (!metadataName) return;
     const metadata = this.metadataOptions().find((item) => item.table_name === metadataName);
@@ -461,10 +490,10 @@ export class LayoutEditorComponent {
       pageType: this.pageType(),
       updatedAt: new Date().toISOString(),
       body: this.body(),
-    }], openPlay);
+    }]);
   }
 
-  private async persist(documents: LayoutDocument[], openPlay: boolean): Promise<void> {
+  private async persist(documents: LayoutDocument[]): Promise<void> {
     this.loadError.set('');
     try {
       const saved: LayoutDocument[] = [];
@@ -473,10 +502,6 @@ export class LayoutEditorComponent {
       if (!target) return;
       this.saved.set(true);
       this.boundRoute.set(target.id);
-      if (openPlay) {
-        void this.router.navigate(['/play', target.id]);
-        return;
-      }
       if (documents.length > 1) {
         void this.router.navigate(['/layouts']);
         return;

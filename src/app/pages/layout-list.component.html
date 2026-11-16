@@ -111,11 +111,6 @@
               <button type="button" class="icon-btn" aria-label="Clone" title="Clone" (click)="clone(layout)">
                 <app-icon name="clone" />
               </button>
-              @if (layout.pageType === 'list') {
-                <a class="icon-btn btn-primary" [routerLink]="['/play', layout.id]" aria-label="Play" title="Play">
-                  <app-icon name="play" />
-                </a>
-              }
               <button type="button" class="icon-btn" aria-label="Delete" title="Delete" (click)="askRemove(layout)">
                 <app-icon name="trash" />
               </button>

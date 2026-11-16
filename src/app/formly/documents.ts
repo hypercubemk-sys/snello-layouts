@@ -96,7 +96,7 @@ export class MediaField extends FieldType<FieldTypeConfig> implements OnInit {
     this.busy.set(true);
     this.note.set('');
     try {
-      const saved = await firstValueFrom(this.http.post<StoredDocument>(`${this.api.base}/documents`, body));
+      const saved = await firstValueFrom(this.http.post<StoredDocument>(this.api.documents, body));
       if (saved?.uuid) {
         this.formControl.setValue(saved.uuid);
         this.formControl.markAsDirty();
@@ -246,7 +246,7 @@ export class ImageField extends FieldType<FieldTypeConfig> implements OnInit {
     this.busy.set(true);
     this.note.set('');
     try {
-      const saved = await firstValueFrom(this.http.post<StoredDocument>(`${this.api.base}/documents`, body));
+      const saved = await firstValueFrom(this.http.post<StoredDocument>(this.api.documents, body));
       if (saved?.uuid) {
         this.formControl.setValue(saved.uuid);
         this.formControl.markAsDirty();

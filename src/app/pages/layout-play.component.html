@@ -23,7 +23,9 @@
           <app-icon name="plus" />
         </a>
       }
-      <a class="icon-btn" [routerLink]="['/layouts', layout()?.id]" aria-label="Edit layout" title="Edit layout"><app-icon name="pencil" /></a>
+      @if (openedAt() !== '/data') {
+        <a class="icon-btn" [routerLink]="['/layouts', layout()?.id]" aria-label="Edit layout" title="Edit layout"><app-icon name="pencil" /></a>
+      }
     </div>
   </section>
   }
@@ -204,15 +206,15 @@
       <form [formGroup]="entryForm()" (ngSubmit)="submit()">
         <formly-form [form]="entryForm()" [fields]="entryFields()" [model]="model" />
         <div class="row-actions">
-          <button type="button" class="icon-btn" aria-label="Back" title="Back" (click)="previousStep()" [disabled]="step() === 0"><app-icon name="back" /></button>
+          <button type="button" class="icon-btn" aria-label="Back" title="Back" (click)="previousStep()" [disabled]="pageCount() <= 1 || step() === 0"><app-icon name="back" /></button>
           @if (step() < pageCount() - 1) {
             <button type="button" class="icon-btn btn-primary" aria-label="Next" title="Next" (click)="nextStep()"><app-icon name="forward" /></button>
-          } @else if (layout()?.pageType === 'edit') {
-            <button type="submit" class="icon-btn btn-primary" aria-label="Read the payload" title="Read the payload"><app-icon name="code" /></button>
+          } @else if (layout()?.pageType === 'edit' && openedAt() === '/data') {
+            <button type="button" class="icon-btn btn-primary" aria-label="Source" title="Source" (click)="showSource()"><app-icon name="code" /></button>
           }
         </div>
       </form>
-      @if (result()) {
+      @if (openedAt() === '/data' && result()) {
         <pre class="code">{{ resultText() }}</pre>
       }
     </section>

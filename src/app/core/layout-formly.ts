@@ -67,12 +67,18 @@ function fieldConfig(
   if (!placement.fieldName) return null;
   const definition = definitions.find((field) => field.name === placement.fieldName);
   const logical = definition ? logicalFieldType(definition) : 'string';
+  const linked = placement.showIf && placement.showIfField ? placement.showIfField : '';
   return {
     key: placement.fieldName,
     type: logical,
     className: `span-${placement.span}`,
     resetOnHide: false,
     wrappers: ['field'],
+    expressions: linked
+      ? {
+          hide: (field) => !hasValue(field.model?.[linked]),
+        }
+      : undefined,
     props: {
       label: definition?.label || placement.fieldName,
       description: definition?.description || undefined,
@@ -84,4 +90,13 @@ function fieldConfig(
       definition,
     },
   };
+}
+
+function hasValue(value: unknown): boolean {
+  if (value == null || value === false) return false;
+  if (typeof value === 'string') return value.trim().length > 0;
+  if (typeof value === 'number') return !Number.isNaN(value);
+  if (Array.isArray(value)) return value.some((item) => hasValue(item));
+  if (typeof value === 'object') return Object.keys(value).length > 0;
+  return true;
 }

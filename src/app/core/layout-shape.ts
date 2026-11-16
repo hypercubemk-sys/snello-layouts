@@ -168,6 +168,20 @@ export function placementNames(body: LayoutBody): string[] {
   return body.pages.flatMap((page) => page.boxes.flatMap((box) => box.fields.map((field) => field.fieldName)));
 }
 
+export function modelFieldNames(body: LayoutBody): string[] {
+  const names = new Set(placementNames(body));
+  if (body.kind === 'wizard') {
+    for (const page of body.pages) {
+      for (const box of page.boxes) {
+        for (const field of box.fields) {
+          if (field.showIf && field.showIfField) names.add(field.showIfField);
+        }
+      }
+    }
+  }
+  return [...names];
+}
+
 export function coerceModel(
   record: Record<string, unknown>,
   fields: FieldDefinition[],

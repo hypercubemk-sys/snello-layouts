@@ -1,10 +1,15 @@
 export interface RuntimeConfig {
-  apiBase: string;
-  keycloak: {
+  api_service_path: string;
+  metadata_api_path: string;
+  data_list_api_path: string;
+  document_api_path: string;
+  layouts_api_path: string;
+  keycloakConfig: {
     url: string;
     realm: string;
     clientId: string;
   };
+  scope?: string;
 }
 
 export interface Metadata {
@@ -44,6 +49,8 @@ export interface LayoutFieldPlacement {
   fieldName: string;
   required: boolean;
   span: 12 | 6 | 4;
+  showIf?: boolean;
+  showIfField?: string | null;
 }
 
 export interface LayoutBox {
