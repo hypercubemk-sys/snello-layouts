@@ -91,7 +91,7 @@
         <a class="card" [routerLink]="['/data', layout.id]">
           <p class="card-title">
             <app-meta-icon [icon]="metadatas.icon(layout.metadataName)" [label]="layout.metadataName" />
-            <span class="card-name">{{ layout.name }}</span>
+            <span class="card-name">{{ metadataLabel(layout.metadataName) }}</span>
           </p>
         </a>
       }

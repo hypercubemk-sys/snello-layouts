@@ -41,7 +41,7 @@ export class DataLayoutsComponent {
     const names = [...new Set(this.lists().map((layout) => layout.metadataName))]
       .filter((name) => !group || this.metadatas.groupOf(name) === group)
       .sort((left, right) => left.localeCompare(right));
-    return names.map((name) => ({ value: name, label: this.metadatas.find(name)?.description || name }));
+    return names.map((name) => ({ value: name, label: this.metadataLabel(name) }));
   });
   readonly visible = computed(() => {
     const group = this.appliedGroup();
@@ -80,7 +80,8 @@ export class DataLayoutsComponent {
   }
 
   metadataLabel(name: string): string {
-    return this.usedMetadata().find((item) => item.value === name)?.label || name;
+    const label = this.metadatas.find(name)?.description?.trim() || name;
+    return label.charAt(0).toLocaleUpperCase() + label.slice(1);
   }
 
   applyFilters(event?: Event): void {

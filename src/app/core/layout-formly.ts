@@ -1,6 +1,7 @@
 import { FormlyFieldConfig } from '@ngx-formly/core';
 import { logicalFieldType, searchFormlyType } from './field-types';
-import { FieldDefinition, LayoutFieldPlacement, WizardLayoutBody } from './models';
+import { customFilterFieldsActive, customFilterKey } from './layout-shape';
+import { CustomFilter, FieldDefinition, LayoutFieldPlacement, WizardLayoutBody } from './models';
 
 export function wizardFields(
   body: WizardLayoutBody,
@@ -21,6 +22,26 @@ export function wizardFields(
         .filter((field): field is FormlyFieldConfig => !!field),
     })),
   }));
+}
+
+export function customFilterFields(filters: CustomFilter[]): FormlyFieldConfig[] {
+  return filters.map((filter) => {
+    const ask = customFilterFieldsActive(filter);
+    const type = !ask ? 'boolean' : filter.type === 'numeric' ? 'number' : filter.type === 'date' ? 'date' : filter.type === 'boolean' ? 'boolean' : 'string';
+    return {
+      key: customFilterKey(filter),
+      type,
+      className: 'span-4',
+      wrappers: ['field'],
+      props: {
+        label: filter.label || filter.name || 'Filter',
+        required: false,
+        search: ask,
+        searchMode: type === 'boolean' ? 'boolean' : 'eq',
+        definition: { name: customFilterKey(filter), type: type === 'number' ? 'input' : type, input_type: type === 'number' ? 'number' : null },
+      },
+    };
+  });
 }
 
 export function filterFormFields(fields: FieldDefinition[]): FormlyFieldConfig[] {

@@ -43,10 +43,10 @@
     <form class="library-filters" (submit)="applyFilters($event)" (click)="$event.stopPropagation()">
       <label>
         Name
-        <span class="search-input" title="Like">
-          <input [value]="draftName()" (input)="draftName.set($any($event.target).value)" (keydown.enter)="applyFilters($event)" />
-          <app-icon name="like" />
-        </span>
+        <p-iconfield iconPosition="right" title="Like">
+          <input class="p-inputtext" [value]="draftName()" (input)="draftName.set($any($event.target).value)" (keydown.enter)="applyFilters($event)" />
+          <p-inputicon><app-icon name="like" /></p-inputicon>
+        </p-iconfield>
       </label>
       <label>
         Group

@@ -1,3 +1,4 @@
+@import "leaflet/dist/leaflet.css";
 @import "@openng/icons/openng-icons.css";
 @import "@fortawesome/fontawesome-free/css/all.min.css";
 @import "@fortawesome/fontawesome-free/css/v4-shims.min.css";
@@ -418,9 +419,19 @@ p-multiselect .p-multiselect-dropdown {
   color: var(--ink);
   border-color: var(--line);
 }
-.range-input { display: flex; align-items: center; gap: 8px; }
-.range-input p-datepicker { flex: 1; min-width: 0; }
-.range-input .glyph { flex: none; color: var(--ink); }
+p-iconfield, .p-iconfield { display: block; width: 100%; }
+.p-iconfield .p-inputicon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  margin-top: -8px;
+  color: var(--ink);
+  pointer-events: none;
+}
+.p-iconfield .p-inputicon .glyph svg { width: 15px; height: 15px; }
+.p-iconfield-left .p-datepicker-input { padding-inline-start: 34px; }
 .filter-note, .editor-box { margin-top: 16px; }
 .editor-box.on { outline: 2px solid var(--accent); }
 .editor-box-head, .page-tools, .step-tabs { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -491,29 +502,8 @@ formly-field.span-12 { grid-column: span 12; }
 formly-field.span-6 { grid-column: span 6; }
 formly-field.span-4 { grid-column: span 4; }
 .field { display: grid; gap: 6px; }
-.search-input {
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #fff;
-}
-.search-input:focus-within { outline: 2px solid #171717; outline-offset: 1px; border-color: #171717; }
-.search-input input {
-  border: 0;
-  outline: none;
-  width: auto;
-  flex: 1;
-  min-width: 0;
-  background: transparent;
-  padding-right: 4px;
-}
-.search-input .glyph {
-  flex: none;
-  margin-right: 8px;
-  color: var(--ink);
-  pointer-events: none;
-}
+.p-iconfield input.p-inputtext:not(:last-child) { padding-inline-end: 34px; }
+.p-iconfield input.p-inputtext:not(:first-child) { padding-inline-start: 34px; }
 .field-head { display: flex; gap: 8px; align-items: center; }
 .type-badge {
   width: 22px;
@@ -719,9 +709,23 @@ formly-field.span-4 { grid-column: span 4; }
 .gallery button { display: grid; gap: 6px; padding: 0; border: 0; background: transparent; text-align: left; }
 .gallery img { width: 100%; height: 84px; object-fit: cover; border-radius: 12px; background: #eee; }
 .gallery span { font-size: 12px; color: var(--muted); }
-.map-frame { width: 100%; height: 240px; border: 0; border-radius: 16px; background: #eee; }
-.path { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
-.path li { display: flex; justify-content: space-between; gap: 8px; }
+.map-frame {
+  width: 100%;
+  height: 280px;
+  border: 0;
+  border-radius: 16px;
+  background: #eee;
+  z-index: 0;
+}
+.map-frame.map-thumb {
+  width: 180px;
+  height: 104px;
+  border-radius: 8px;
+  pointer-events: none;
+}
+.map-thumb .leaflet-control-attribution { font-size: 8px; line-height: 1.2; padding: 0 3px; }
+.path-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.path-chips .hint { margin: 0; }
 .toggle {
   display: inline-flex;
   align-items: center;

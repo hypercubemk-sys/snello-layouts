@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { logicalFieldType, staticOptions } from '../core/field-types';
 import { FieldDefinition } from '../core/models';
 import { joinLabelName } from '../core/snello-api';
-import { plainExcerpt, splitCsv } from '../formly/kit';
+import { parsePoint, plainExcerpt, splitCsv, splitPath } from '../formly/kit';
+import { MapCanvas } from '../formly/maps';
 
 const LINKED = new Set(['join', 'lookup', 'multijoin', 'multilookup', 'select', 'multiselect']);
 
@@ -12,8 +13,19 @@ export function linkedLabelKey(table: string, label: string, id: string): string
 
 @Component({
   selector: 'app-list-value',
+  imports: [MapCanvas],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `{{ shown() }}`,
+  template: `
+    @if (mapPoints(); as points) {
+      @if (points.length) {
+        <app-map-canvas [points]="points" [line]="mapKind() === 'path'" [compact]="true" />
+      } @else {
+        —
+      }
+    } @else {
+      {{ shown() }}
+    }
+  `,
 })
 export class ListValue {
   readonly field = input<FieldDefinition | null>(null);
@@ -21,6 +33,27 @@ export class ListValue {
   readonly labels = input<Record<string, string>>({});
   readonly pending = input(false);
 
+  readonly mapKind = computed((): 'point' | 'path' | null => {
+    const field = this.field();
+    if (!field) return null;
+    const logical = logicalFieldType(field);
+    if (logical === 'gmaplocation') return 'point';
+    if (logical === 'gmappath') return 'path';
+    return null;
+  });
+  readonly mapPoints = computed((): [number, number][] | null => {
+    const kind = this.mapKind();
+    if (!kind) return null;
+    const text = this.value() == null ? '' : String(this.value());
+    if (kind === 'point') {
+      const parsed = parsePoint(text);
+      return parsed ? [parsed] : [];
+    }
+    return splitPath(text).flatMap((part) => {
+      const parsed = parsePoint(part);
+      return parsed ? [parsed] : [];
+    });
+  });
   readonly shown = computed(() => this.render());
 
   private render(): string {

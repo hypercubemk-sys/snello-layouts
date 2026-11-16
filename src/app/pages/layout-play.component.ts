@@ -5,9 +5,12 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { logicalFieldType, staticOptions } from '../core/field-types';
-import { filterFormFields, wizardFields } from '../core/layout-formly';
+import { customFilterFields, filterFormFields, wizardFields } from '../core/layout-formly';
 import {
   coerceModel,
+  customFilterKey,
+  customFilterParams,
+  customFilterText,
   filterParams,
   orderedColumns,
   modelFieldNames,
@@ -78,6 +81,7 @@ export class LayoutPlayComponent {
   readonly sortDir = signal<'asc' | 'desc'>('asc');
   readonly recordKey = signal('');
   readonly filterParams = signal<Record<string, string>>({});
+  private readonly appliedValue = signal<Record<string, unknown>>({});
   readonly result = signal<Record<string, unknown> | null>(null);
   readonly saving = signal(false);
   readonly saved = signal(false);
@@ -164,13 +168,20 @@ export class LayoutPlayComponent {
       .sort((left, right) => rank(left.pageType) - rank(right.pageType) || left.name.localeCompare(right.name, 'it'));
   });
 
+  readonly customFilters = computed(() => {
+    const layout = this.layout();
+    if (!layout || layout.body.kind !== 'list') return [];
+    return layout.body.filters ?? [];
+  });
+
   readonly searchDefinitions = computed(() => {
     const layout = this.layout();
     if (!layout || layout.body.kind !== 'list') return [];
-    return searchFieldsForList(layout.body, this.definitions());
+    const enabled = new Set(this.columns().map((column) => column.fieldName));
+    return searchFieldsForList(layout.body, this.definitions()).filter((field) => enabled.has(searchColumn(field.name ?? '')));
   });
 
-  readonly filterFields = computed(() => filterFormFields(this.searchDefinitions()));
+  readonly filterFields = computed(() => [...filterFormFields(this.searchDefinitions()), ...customFilterFields(this.customFilters())]);
 
   readonly entryFields = computed(() => {
     const layout = this.layout();
@@ -292,6 +303,7 @@ export class LayoutPlayComponent {
         this.sortDir.set('asc');
         this.chosenFields.set(readListColumns(id));
         this.columnsOpen.set(false);
+        this.appliedValue.set({});
         this.filterParams.set({});
         this.appliedFilters.set([]);
         this.filtersOpen.set(false);
@@ -318,6 +330,19 @@ export class LayoutPlayComponent {
         this.replaceModel(coerceModel(data, fields, modelFieldNames(layout.body)));
         this.result.set(null);
         this.formTick.update((value) => value + 1);
+      });
+    });
+
+    effect(() => {
+      if (this.embedded() || this.layout()?.pageType !== 'list') return;
+      const fields = this.searchDefinitions();
+      const customs = this.customFilters();
+      untracked(() => {
+        const value = this.appliedValue();
+        const params = { ...filterParams(fields, value), ...customFilterParams(customs, value) };
+        if (sameParams(this.filterParams(), params)) return;
+        this.filterParams.set(params);
+        void this.publishFilters(value);
       });
     });
 
@@ -380,7 +405,8 @@ export class LayoutPlayComponent {
   applyFilters(): void {
     const value = this.filterForm().getRawValue() as Record<string, unknown>;
     this.writeFilterModel(value);
-    this.filterParams.set(filterParams(this.searchDefinitions(), value));
+    this.appliedValue.set(value);
+    this.filterParams.set(this.currentParams(value));
     this.filtersOpen.set(false);
     this.publishPage(0);
     void this.publishFilters(value);
@@ -391,6 +417,7 @@ export class LayoutPlayComponent {
     for (const key of Object.keys(this.filterModel)) this.filterModel[key] = null;
     for (const name of Object.keys(form.controls)) form.get(name)?.reset(null);
     this.clearFilterModel();
+    this.appliedValue.set({});
     this.filterParams.set({});
     this.appliedFilters.set([]);
     this.publishPage(0);
@@ -430,7 +457,16 @@ export class LayoutPlayComponent {
       if (!text) continue;
       chips.push({ name, label: this.chipLabel(field), value: text });
     }
+    for (const filter of this.customFilters()) {
+      const text = customFilterText(filter, value[customFilterKey(filter)]);
+      if (!text) continue;
+      chips.push({ name: customFilterKey(filter), label: filter.label || filter.name || 'Filter', value: text });
+    }
     return chips;
+  }
+
+  private currentParams(value: Record<string, unknown>): Record<string, string> {
+    return { ...filterParams(this.searchDefinitions(), value), ...customFilterParams(this.customFilters(), value) };
   }
 
   private async readableValue(field: FieldDefinition, raw: unknown): Promise<string> {
@@ -873,6 +909,16 @@ function listPageStart(params: ParamMap | null | undefined): number {
   const page = Number(params?.get('page'));
   if (!Number.isFinite(page) || page < 2) return 0;
   return (Math.floor(page) - 1) * listPageSize(params);
+}
+
+function searchColumn(name: string): string {
+  return name.replace(/__(min|max)$/, '');
+}
+
+function sameParams(left: Record<string, string>, right: Record<string, string>): boolean {
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  return leftKeys.length === rightKeys.length && leftKeys.every((key) => left[key] === right[key]);
 }
 
 function readListColumns(id: string): string[] | null {

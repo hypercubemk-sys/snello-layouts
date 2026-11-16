@@ -5,6 +5,8 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { CheckboxModule } from '@openng/optimus-ui/checkbox';
 import { DatePickerModule } from '@openng/optimus-ui/datepicker';
 import { MultiSelectModule } from '@openng/optimus-ui/multiselect';
+import { IconField } from '@openng/optimus-ui/iconfield';
+import { InputIcon } from '@openng/optimus-ui/inputicon';
 import { SelectModule } from '@openng/optimus-ui/select';
 import { FieldType, FieldTypeConfig, FormlyModule } from '@ngx-formly/core';
 import { joinKeyName, joinLabelName, SnelloApi } from '../core/snello-api';
@@ -15,22 +17,23 @@ import { Icon } from '../icon';
 
 @Component({
   selector: 'app-formly-input',
-  imports: [ReactiveFormsModule, FormlyModule, Icon],
+  imports: [ReactiveFormsModule, FormlyModule, Icon, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (props.readonly) {
       <p class="readonly">{{ shown }}</p>
     } @else if (searchMark) {
-      <span class="search-input" [attr.title]="searchTitle">
+      <p-iconfield iconPosition="right" [attr.title]="searchTitle">
         <input
+          class="p-inputtext"
           [id]="id"
           [type]="inputType"
           [attr.inputmode]="field.type === 'decimal' ? 'decimal' : null"
           [attr.step]="field.type === 'number' || field.type === 'decimal' ? 'any' : null"
           [formControl]="formControl"
           [formlyAttributes]="field" />
-        <app-icon [name]="searchMark" />
-      </span>
+        <p-inputicon><app-icon [name]="searchMark" /></p-inputicon>
+      </p-iconfield>
     } @else {
       <input
         [id]="id"
@@ -267,15 +270,15 @@ export class MultiselectField extends FieldType<FieldTypeConfig> implements OnIn
 
 @Component({
   selector: 'app-formly-temporal',
-  imports: [ReactiveFormsModule, DatePickerModule, Icon],
+  imports: [ReactiveFormsModule, DatePickerModule, Icon, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (props.readonly) {
       <p class="readonly">{{ shown }}</p>
     } @else {
-      <span class="range-input" [attr.title]="rangeTitle">
+      <p-iconfield [iconPosition]="rangeMark ? 'left' : 'right'" [attr.title]="rangeTitle">
         @if (rangeMark) {
-          <app-icon [name]="rangeMark" />
+          <p-inputicon><app-icon [name]="rangeMark" /></p-inputicon>
         }
         <p-datepicker
           [inputId]="id"
@@ -291,7 +294,7 @@ export class MultiselectField extends FieldType<FieldTypeConfig> implements OnIn
           [baseZIndex]="2000"
           [firstDayOfWeek]="1"
           [showButtonBar]="true" />
-      </span>
+      </p-iconfield>
     }
   `,
 })

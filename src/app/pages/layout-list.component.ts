@@ -6,6 +6,8 @@ import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { CheckboxModule } from '@openng/optimus-ui/checkbox';
 import { Paginator, PaginatorState } from '@openng/optimus-ui/paginator';
+import { IconField } from '@openng/optimus-ui/iconfield';
+import { InputIcon } from '@openng/optimus-ui/inputicon';
 import { SelectModule } from '@openng/optimus-ui/select';
 import { FormsModule } from '@angular/forms';
 import { seedBody } from '../core/layout-shape';
@@ -20,7 +22,7 @@ const PAGE_SIZES = [10, 20, 50];
 
 @Component({
   selector: 'app-layout-list',
-  imports: [RouterLink, DatePipe, Icon, MetaIcon, CheckboxModule, FormsModule, Paginator, SelectModule],
+  imports: [RouterLink, DatePipe, Icon, MetaIcon, CheckboxModule, FormsModule, Paginator, SelectModule, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './layout-list.component.html',
 })

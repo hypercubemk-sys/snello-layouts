@@ -4,7 +4,7 @@ Data is where you work with records. It does not edit the layout itself. To chan
 
 ## Find a list
 
-Open **Data** from Home or from the side menu. Every card is a list layout. The card shows the metadata icon and the layout name.
+Open **Data** from Home or from the side menu. Every card is a list layout. The card shows the metadata icon and the metadata label.
 
 Click **Filters** to narrow the cards:
 
@@ -21,13 +21,15 @@ The plus button starts a new record when this metadata has an edit layout. It op
 
 ## Search the records
 
-Click **Filters**. The fields are the ones marked searchable on the list layout. A text search can be a contains match or an exact match. Dates can be a range. A number range is labeled **from** and **to**. Booleans are yes, no, or any. A select accepts several values. A join or a relationship opens a list: the check keeps only that record, and the flag adds it to the selection. Those lists show names, not identifiers.
+Click **Filters**. The fields are the searchable columns that are enabled in **Visible fields**. Hiding a column removes its filter. Custom filters stay in the list. A text search can be a contains match or an exact match. Dates can be a range. A number range is labeled **from** and **to**. Booleans are yes, no, or any. A select accepts several values. A join or a relationship opens a list: the check keeps only that record, and the flag adds it to the selection. Those lists show names, not identifiers.
 
 The search does not start while you type. Press Enter or the check button. The panel closes and the list reloads. The X clears every field and loads the list without filters. Active filters stay visible as chips.
 
 The sliders button, **Visible fields**, chooses which columns are shown. **Select all** and **Clear all** are in that menu. This choice is for the current list on this browser and does not change the layout.
 
 ## Sort and pages
+
+A location column and a path column show a small map. The path map draws every point.
 
 Click a column title to sort. Click it again to reverse the order. The arrow shows the direction.
 

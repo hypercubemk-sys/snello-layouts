@@ -1,5 +1,6 @@
 import { defaultSpan, logicalFieldType } from './field-types';
 import {
+  CustomFilter,
   FieldDefinition,
   LayoutBody,
   LayoutDocument,
@@ -7,6 +8,7 @@ import {
   SearchMode,
   WizardLayoutBody,
 } from './models';
+import { conditionNeedsValue } from './query-conditions';
 
 export function seedList(fields: FieldDefinition[]): ListLayoutBody {
   return {
@@ -166,6 +168,79 @@ function listValues(raw: unknown): string[] {
   if (typeof raw === 'string') return raw.split(',').map((item) => item.trim()).filter((item) => item.length > 0);
   if (raw == null || raw === '' || raw === false) return [];
   return [String(raw)];
+}
+
+export function customFilterKey(filter: CustomFilter): string {
+  return `custom__${filter.id}`;
+}
+
+export function customFilterFieldsActive(filter: CustomFilter): boolean {
+  if (filter.mode === 'developer') return conditionNeedsValue(filter.suffix);
+  return filter.conditions.some((item) => item.fieldName && item.source !== 'fixed' && conditionNeedsValue(item.suffix));
+}
+
+export function customFilterParams(filters: CustomFilter[], value: Record<string, unknown>): Record<string, string> {
+  const params: Record<string, string> = {};
+  for (const filter of filters) {
+    const raw = value[customFilterKey(filter)];
+    if (filter.mode === 'developer') {
+      assignDeveloper(params, filter, raw);
+      continue;
+    }
+    if (!columnFilterActive(filter, raw)) continue;
+    for (const condition of filter.conditions) {
+      if (!condition.fieldName) continue;
+      const key = `${condition.fieldName}${condition.suffix}`;
+      if (!conditionNeedsValue(condition.suffix)) {
+        params[key] = '1';
+        continue;
+      }
+      if (condition.source === 'fixed') {
+        if (condition.value) params[key] = condition.value;
+        continue;
+      }
+      const entered = enteredText(filter, raw);
+      if (entered) params[key] = entered;
+    }
+  }
+  return params;
+}
+
+export function customFilterText(filter: CustomFilter, raw: unknown): string {
+  if (!customFilterFieldsActive(filter)) return raw === true || raw === 1 || raw === '1' ? 'on' : '';
+  if (filter.type === 'boolean') {
+    if (raw === true || raw === 1 || raw === '1' || raw === 'true') return 'yes';
+    if (raw === false || raw === 0 || raw === '0' || raw === 'false') return 'no';
+    return '';
+  }
+  if (raw == null || raw === '') return '';
+  return String(raw);
+}
+
+function assignDeveloper(params: Record<string, string>, filter: CustomFilter, raw: unknown): void {
+  const name = filter.name.trim();
+  if (!name) return;
+  const key = `${name}${filter.suffix}`;
+  if (!conditionNeedsValue(filter.suffix)) {
+    if (raw === true || raw === 1 || raw === '1') params[key] = '1';
+    return;
+  }
+  const text = filter.type === 'boolean' ? enteredText(filter, raw) : raw == null ? '' : String(raw).trim();
+  if (text) params[key] = text;
+}
+
+function columnFilterActive(filter: CustomFilter, raw: unknown): boolean {
+  if (!customFilterFieldsActive(filter)) return raw === true || raw === 1 || raw === '1';
+  return enteredText(filter, raw).length > 0;
+}
+
+function enteredText(filter: CustomFilter, raw: unknown): string {
+  if (filter.type === 'boolean') {
+    if (raw === true || raw === 1 || raw === '1' || raw === 'true') return '1';
+    if (raw === false || raw === 0 || raw === '0' || raw === 'false') return '0';
+    return '';
+  }
+  return raw == null ? '' : String(raw).trim();
 }
 
 function paramName(field: FieldDefinition): string {
