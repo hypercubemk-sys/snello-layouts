@@ -371,13 +371,16 @@ export class LayoutPlayComponent {
     const value = this.filterForm().getRawValue() as Record<string, unknown>;
     this.writeFilterModel(value);
     this.filterParams.set(filterParams(this.searchDefinitions(), value));
+    this.filtersOpen.set(false);
     this.publishPage(0);
     void this.publishFilters(value);
   }
 
   clearFilters(): void {
+    const form = this.filterForm();
+    for (const key of Object.keys(this.filterModel)) this.filterModel[key] = null;
+    for (const name of Object.keys(form.controls)) form.get(name)?.reset(null);
     this.clearFilterModel();
-    this.filterForm().reset();
     this.filterParams.set({});
     this.appliedFilters.set([]);
     this.publishPage(0);
@@ -386,7 +389,6 @@ export class LayoutPlayComponent {
   private async publishFilters(value: Record<string, unknown>): Promise<void> {
     const chips = await this.chips(value);
     this.appliedFilters.set(chips);
-    this.filtersOpen.set(false);
   }
 
   private chipLabel(field: FieldDefinition): string {

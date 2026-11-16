@@ -12,12 +12,14 @@
 @if (!layoutsReady()) {
   <p class="muted">Loading layouts…</p>
 } @else if (lists().length > 0) {
-  <section class="filters">
+  <section class="filters" [class.is-open]="filtersOpen()" (click)="!filtersOpen() && filtersOpen.set(true)">
     <div class="section-title">
-      <h2>Filters</h2>
-      <button type="button" class="icon-btn" [attr.aria-label]="filtersOpen() ? 'Close filters' : 'Open filters'" [attr.title]="filtersOpen() ? 'Close filters' : 'Open filters'" (click)="filtersOpen.set(!filtersOpen())">
-        <app-icon name="filter" />
-      </button>
+      <h2>
+        <button type="button" class="filter-bar" [attr.aria-expanded]="filtersOpen()" [attr.title]="filtersOpen() ? 'Close filters' : 'Open filters'" (click)="$event.stopPropagation(); filtersOpen.set(!filtersOpen())">
+          <span>Filters</span>
+          <span class="icon-btn" aria-hidden="true"><app-icon name="filter" /></span>
+        </button>
+      </h2>
     </div>
     @if (!filtersOpen() && appliedMetadata()) {
       <ul class="applied">
@@ -25,11 +27,11 @@
       </ul>
     }
     @if (filtersOpen()) {
-      <form class="library-filters" (submit)="applyFilters($event)">
+      <form class="library-filters" (submit)="applyFilters($event)" (click)="$event.stopPropagation()">
         <label>
           Metadata
           <select [value]="draftMetadata()" (change)="draftMetadata.set($any($event.target).value)">
-            <option value="">All</option>
+            <option value="" [selected]="draftMetadata() === ''">All</option>
             @for (item of usedMetadata(); track item.value) {
               <option [value]="item.value" [selected]="item.value === draftMetadata()">{{ item.label }}</option>
             }

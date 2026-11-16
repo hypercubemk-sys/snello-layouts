@@ -215,6 +215,24 @@ main { padding: 28px 32px 40px; }
 .card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
 .card-foot time { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .confirm-ask { color: var(--ink); font-size: 12px; font-weight: 640; white-space: nowrap; }
+.filters:not(.is-open) { cursor: pointer; }
+.filters .section-title { align-items: center; }
+.filters .section-title h2 { flex: 1; min-width: 0; }
+.filter-bar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.filter-bar .icon-btn:hover { background: transparent; }
 .applied { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
 .applied li { display: inline-flex; align-items: baseline; gap: 6px; max-width: 100%; padding: 3px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fafafa; font-size: 12px; }
 .applied span { color: var(--muted); }
