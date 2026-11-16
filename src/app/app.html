@@ -64,6 +64,8 @@
               <p>{{ profile().lang }}</p>
               <span>Roles</span>
               <p>{{ profile().roles || '—' }}</p>
+              <span>Version</span>
+              <p>{{ version }}</p>
               <button type="button" class="icon-btn" aria-label="Log out" title="Log out" (click)="logout()">
                 <app-icon name="logout" />
               </button>

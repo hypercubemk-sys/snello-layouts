@@ -102,7 +102,7 @@ export function withSearches(body: ListLayoutBody, fields: FieldDefinition[]): L
     changed = true;
     return { ...column, search };
   });
-  return changed ? { kind: 'list', columns } : body;
+  return changed ? { ...body, columns } : body;
 }
 
 export function searchFieldsForList(body: ListLayoutBody, fields: FieldDefinition[]): FieldDefinition[] {

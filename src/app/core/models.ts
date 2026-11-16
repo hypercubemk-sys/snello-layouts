@@ -74,9 +74,32 @@ export interface ListColumn {
   search?: SearchMode;
 }
 
+export type CustomFilterType = 'string' | 'boolean' | 'date' | 'numeric';
+export type CustomFilterMode = 'columns' | 'developer';
+export type FilterValueSource = 'fixed' | 'dynamic';
+
+export interface ColumnCondition {
+  id: string;
+  fieldName: string;
+  suffix: string;
+  source: FilterValueSource;
+  value: string;
+}
+
+export interface CustomFilter {
+  id: string;
+  label: string;
+  type: CustomFilterType;
+  mode: CustomFilterMode;
+  conditions: ColumnCondition[];
+  name: string;
+  suffix: string;
+}
+
 export interface ListLayoutBody {
   kind: 'list';
   columns: ListColumn[];
+  filters?: CustomFilter[];
 }
 
 export interface WizardLayoutBody {

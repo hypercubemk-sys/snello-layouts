@@ -21,9 +21,22 @@ export class MetadataCatalog {
     return this.list().find((item) => item.table_name === table);
   }
 
+  groupOf(table: string): string {
+    return (this.find(table)?.metadata_group ?? '').trim();
+  }
+
   icon(table: string): string {
     return metadataIconClass(this.find(table)?.icon);
   }
+}
+
+export function groupsOf(tables: string[], groupOf: (table: string) => string): string[] {
+  const groups = new Set<string>();
+  for (const table of tables) {
+    const group = groupOf(table);
+    if (group) groups.add(group);
+  }
+  return [...groups].sort((left, right) => left.localeCompare(right, undefined, { sensitivity: 'base' }));
 }
 
 export function metadataIconClass(icon: string | null | undefined): string {

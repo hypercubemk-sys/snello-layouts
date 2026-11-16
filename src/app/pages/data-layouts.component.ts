@@ -1,10 +1,9 @@
-import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { Paginator, PaginatorState } from '@openng/optimus-ui/paginator';
 import { LayoutStore } from '../core/layout-store';
-import { MetadataCatalog } from '../core/metadata-catalog';
+import { groupsOf, MetadataCatalog } from '../core/metadata-catalog';
 import { Icon } from '../icon';
 import { MetaIcon } from '../meta-icon';
 
@@ -12,7 +11,7 @@ const PAGE_SIZES = [10, 20, 50];
 
 @Component({
   selector: 'app-data-layouts',
-  imports: [RouterLink, DatePipe, Icon, MetaIcon, Paginator],
+  imports: [RouterLink, Icon, MetaIcon, Paginator],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './data-layouts.component.html',
 })
@@ -26,18 +25,29 @@ export class DataLayoutsComponent {
   readonly pageSize = signal(dataPageSize(this.route.snapshot.queryParamMap));
   readonly pageSizes = PAGE_SIZES;
   readonly filtersOpen = signal(false);
+  readonly draftGroup = signal('');
   readonly draftMetadata = signal('');
+  readonly appliedGroup = signal('');
   readonly appliedMetadata = signal('');
   readonly lists = computed(() => this.store.all().filter((layout) => layout.pageType === 'list'));
   readonly layoutsReady = this.store.ready;
   readonly layoutsError = this.store.error;
+  readonly groups = computed(() => groupsOf(this.lists().map((layout) => layout.metadataName), (table) => this.metadatas.groupOf(table)));
   readonly usedMetadata = computed(() => {
-    const names = [...new Set(this.lists().map((layout) => layout.metadataName))].sort((left, right) => left.localeCompare(right));
+    const group = this.draftGroup();
+    const names = [...new Set(this.lists().map((layout) => layout.metadataName))]
+      .filter((name) => !group || this.metadatas.groupOf(name) === group)
+      .sort((left, right) => left.localeCompare(right));
     return names.map((name) => ({ value: name, label: this.metadatas.find(name)?.description || name }));
   });
   readonly visible = computed(() => {
+    const group = this.appliedGroup();
     const metadata = this.appliedMetadata();
-    return metadata ? this.lists().filter((layout) => layout.metadataName === metadata) : this.lists();
+    return this.lists().filter((layout) => {
+      if (group && this.metadatas.groupOf(layout.metadataName) !== group) return false;
+      if (metadata && layout.metadataName !== metadata) return false;
+      return true;
+    });
   });
   readonly pageItems = computed(() => {
     const size = this.pageSize();
@@ -72,13 +82,21 @@ export class DataLayoutsComponent {
 
   applyFilters(event?: Event): void {
     event?.preventDefault();
+    this.appliedGroup.set(this.draftGroup());
     this.appliedMetadata.set(this.draftMetadata());
     this.filtersOpen.set(false);
     this.publishPage(0);
   }
 
+  onGroup(value: string): void {
+    this.draftGroup.set(value);
+    if (value && this.metadatas.groupOf(this.draftMetadata()) !== value) this.draftMetadata.set('');
+  }
+
   clearFilters(): void {
+    this.draftGroup.set('');
     this.draftMetadata.set('');
+    this.appliedGroup.set('');
     this.appliedMetadata.set('');
     this.publishPage(0);
   }

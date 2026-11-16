@@ -49,6 +49,15 @@
         </span>
       </label>
       <label>
+        Group
+        <select [value]="draftGroup()" (change)="onGroup($any($event.target).value)">
+          <option value="" [selected]="draftGroup() === ''">All</option>
+          @for (group of groups(); track group) {
+            <option [value]="group" [selected]="group === draftGroup()">{{ group }}</option>
+          }
+        </select>
+      </label>
+      <label>
         Metadata
         <select [value]="draftMetadata()" (change)="draftMetadata.set($any($event.target).value)">
           <option value="" [selected]="draftMetadata() === ''">All</option>

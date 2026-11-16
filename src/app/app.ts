@@ -6,6 +6,7 @@ import { filter, map } from 'rxjs';
 import { LayoutStore } from './core/layout-store';
 import { Session } from './core/session';
 import { Icon } from './icon';
+import { APP_VERSION } from './version';
 
 interface Crumb {
   label: string;
@@ -34,6 +35,7 @@ export class App {
   readonly menuOpen = signal(false);
   readonly userOpen = signal(false);
   readonly profile = this.session.user;
+  readonly version = APP_VERSION;
 
   logout(): void {
     void this.keycloak.logout({ redirectUri: window.location.origin });

@@ -102,7 +102,6 @@
         <div class="section-title">
           <h2>Columns</h2>
         </div>
-        <p class="muted">String, text, and TinyMCE start as like. Dates start as a range, booleans as yes/no, numbers as equals. Images are not searchable.</p>
         <ol class="columns">
           @for (column of columns(); track column.fieldName) {
             <li [class.off]="!column.visible">
@@ -133,6 +132,118 @@
             </li>
           }
           </ol>
+        <div class="custom-filters">
+          <div class="section-title">
+            <h2>Filtri custom</h2>
+            <button type="button" class="icon-btn" aria-label="Add filter" title="Add filter" (click)="addFilter()">
+              <app-icon name="plus" />
+            </button>
+          </div>
+          @for (filter of customFilters(); track filter.id) {
+            <article class="custom-filter">
+              <div class="custom-filter-fields">
+                <label>
+                  Label
+                  <input [value]="filter.label" (input)="setFilterLabel(filter.id, $event)" />
+                </label>
+                <label>
+                  Type
+                  <select (change)="setFilterType(filter.id, $event)">
+                    @for (type of filterTypes; track type) {
+                      <option [value]="type" [selected]="filter.type === type">{{ filterTypeLabel(type) }}</option>
+                    }
+                  </select>
+                </label>
+                <label>
+                  Mode
+                  <select (change)="setFilterMode(filter.id, $event)">
+                    <option value="columns" [selected]="filter.mode === 'columns'">Column conditions</option>
+                    <option value="developer" [selected]="filter.mode === 'developer'">Developer</option>
+                  </select>
+                </label>
+                <button type="button" class="icon-btn" aria-label="Remove filter" title="Remove filter" (click)="removeFilter(filter.id)">
+                  <app-icon name="trash" />
+                </button>
+              </div>
+              @if (filter.mode === 'columns') {
+                <div class="section-title condition-title">
+                  <h3>Column conditions</h3>
+                  <button type="button" class="icon-btn" aria-label="Add condition" title="Add condition" (click)="addCondition(filter.id)">
+                    <app-icon name="plus" />
+                  </button>
+                </div>
+                @for (condition of filter.conditions; track condition.id) {
+                  <div class="condition-row">
+                    <label>
+                      Field
+                      <select (change)="setConditionField(filter.id, condition.id, $event)">
+                        <option value="" [selected]="!condition.fieldName">Choose</option>
+                        @for (field of fields(); track field.uuid ?? field.name) {
+                          <option [value]="field.name" [selected]="condition.fieldName === field.name">{{ field.label || field.name }}</option>
+                        }
+                      </select>
+                    </label>
+                    <label>
+                      Condition
+                      <select (change)="setConditionSuffix(filter.id, condition.id, $event)">
+                        @for (item of queryConditions; track item.suffix) {
+                          <option [value]="item.suffix" [selected]="condition.suffix === item.suffix">{{ item.label }}</option>
+                        }
+                      </select>
+                    </label>
+                    @if (needsValue(condition.suffix)) {
+                      <label>
+                        Value
+                        <select (change)="setConditionSource(filter.id, condition.id, $event)">
+                          <option value="dynamic" [selected]="condition.source !== 'fixed'">Entered</option>
+                          <option value="fixed" [selected]="condition.source === 'fixed'">Fixed</option>
+                        </select>
+                      </label>
+                      @if (condition.source === 'fixed') {
+                        @if (filter.type === 'boolean') {
+                          <label>
+                            Fixed
+                            <select (change)="setConditionValue(filter.id, condition.id, $event)">
+                              <option value="" [selected]="!condition.value">Choose</option>
+                              <option value="1" [selected]="condition.value === '1'">Yes</option>
+                              <option value="0" [selected]="condition.value === '0'">No</option>
+                            </select>
+                          </label>
+                        } @else {
+                          <label>
+                            Fixed
+                            <input [type]="filter.type === 'date' ? 'date' : 'text'" [value]="condition.value" (input)="setConditionValue(filter.id, condition.id, $event)" />
+                          </label>
+                        }
+                      }
+                    }
+                    <button type="button" class="icon-btn" aria-label="Remove condition" title="Remove condition" (click)="removeCondition(filter.id, condition.id)">
+                      <app-icon name="minus" />
+                    </button>
+                  </div>
+                }
+              } @else {
+                <div class="condition-row">
+                  <label>
+                    Name
+                    <input [value]="filter.name" (input)="setFilterName(filter.id, $event)" />
+                  </label>
+                  <label>
+                    Condition
+                    <select (change)="setFilterSuffix(filter.id, $event)">
+                      @for (item of queryConditions; track item.suffix) {
+                        <option [value]="item.suffix" [selected]="filter.suffix === item.suffix">{{ item.label }}</option>
+                      }
+                    </select>
+                  </label>
+                  <button type="button" class="icon-btn" aria-label="Query conditions" title="Query conditions" (click)="conditionsOpen.set(true)">
+                    <app-icon name="info" />
+                  </button>
+                </div>
+              }
+            </article>
+          }
+        </div>
       } @else {
         <div class="section-title">
           <h2>Pages</h2>
@@ -232,4 +343,34 @@
       }
     </section>
   </div>
+  @if (conditionsOpen()) {
+    <div class="sheet-back" (click)="conditionsOpen.set(false)">
+      <section class="sheet" role="dialog" aria-modal="true" aria-label="Query conditions" (click)="$event.stopPropagation()">
+        <header>
+          <strong>Query conditions</strong>
+          <button type="button" class="icon-btn" aria-label="Close" title="Close" (click)="conditionsOpen.set(false)">
+            <app-icon name="close" />
+          </button>
+        </header>
+        <table class="conditions-table">
+          <thead>
+            <tr>
+              <th>Suffix</th>
+              <th>SQL</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of queryConditions; track item.suffix) {
+              <tr>
+                <td>{{ item.suffix || '(none)' }}</td>
+                <td>{{ item.sql }}</td>
+                <td>{{ item.notes }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </section>
+    </div>
+  }
 }

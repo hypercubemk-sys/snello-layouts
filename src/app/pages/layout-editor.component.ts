@@ -7,15 +7,22 @@ import { PanelModule } from '@openng/optimus-ui/panel';
 import { defaultSpan, FIELD_TYPE_CATALOG, fieldTypeIcon, logicalFieldType } from '../core/field-types';
 import { orderedColumns, placementNames, resolvedSearch, searchChoices, SEARCH_LABEL, seedBody, withSearches } from '../core/layout-shape';
 import {
+  ColumnCondition,
+  CustomFilter,
+  CustomFilterMode,
+  CustomFilterType,
   FieldDefinition,
+  FilterValueSource,
   LayoutBody,
   LayoutBox,
   LayoutDocument,
   LayoutPage,
+  ListLayoutBody,
   PageKind,
   SearchMode,
   WizardLayoutBody,
 } from '../core/models';
+import { conditionNeedsValue, QUERY_CONDITIONS } from '../core/query-conditions';
 import { LayoutStore } from '../core/layout-store';
 import { MetadataCatalog } from '../core/metadata-catalog';
 import { SnelloApi } from '../core/snello-api';
@@ -87,6 +94,10 @@ export class LayoutEditorComponent {
     const body = this.listBody();
     return body ? orderedColumns(body) : [];
   });
+  readonly customFilters = computed(() => this.listBody()?.filters ?? []);
+  readonly conditionsOpen = signal(false);
+  readonly queryConditions = QUERY_CONDITIONS;
+  readonly filterTypes: CustomFilterType[] = ['string', 'boolean', 'date', 'numeric'];
 
   readonly selectedPage = computed(() => {
     const wizard = this.wizard();
@@ -241,44 +252,123 @@ export class LayoutEditorComponent {
   setSearch(name: string, event: Event): void {
     const search = (event.target as HTMLSelectElement).value as SearchMode;
     if (!this.searchOptions(name).includes(search)) return;
-    this.body.update((body) => {
-      if (body.kind !== 'list') return body;
-      return {
-        kind: 'list',
-        columns: body.columns.map((column) => (column.fieldName === name ? { ...column, search } : column)),
-      };
+    this.patchList((body) => {
+      body.columns = body.columns.map((column) => (column.fieldName === name ? { ...column, search } : column));
     });
-    this.saved.set(false);
   }
 
   toggleColumn(name: string): void {
-    this.body.update((body) => {
-      if (body.kind !== 'list') return body;
-      return {
-        kind: 'list',
-        columns: body.columns.map((column) =>
-          column.fieldName === name ? { ...column, visible: !column.visible } : column,
-        ),
-      };
+    this.patchList((body) => {
+      body.columns = body.columns.map((column) =>
+        column.fieldName === name ? { ...column, visible: !column.visible } : column,
+      );
     });
-    this.saved.set(false);
   }
 
   moveColumn(name: string, direction: -1 | 1): void {
-    this.body.update((body) => {
-      if (body.kind !== 'list') return body;
-      const columns = orderedColumns(body);
-      const index = columns.findIndex((column) => column.fieldName === name);
-      const target = index + direction;
-      if (index < 0 || target < 0 || target >= columns.length) return body;
-      const current = columns[index];
-      const next = columns[target];
-      if (!current || !next) return body;
-      columns[index] = next;
-      columns[target] = current;
-      return { kind: 'list', columns: columns.map((column, order) => ({ ...column, order })) };
+    const columns = this.columns();
+    const index = columns.findIndex((column) => column.fieldName === name);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= columns.length) return;
+    this.patchList((body) => {
+      const ordered = orderedColumns(body);
+      const current = ordered[index];
+      const next = ordered[target];
+      if (!current || !next) return;
+      ordered[index] = next;
+      ordered[target] = current;
+      body.columns = ordered.map((column, order) => ({ ...column, order }));
     });
-    this.saved.set(false);
+  }
+
+  filterTypeLabel(type: CustomFilterType): string {
+    if (type === 'boolean') return 'Boolean';
+    if (type === 'date') return 'Date';
+    if (type === 'numeric') return 'Numeric';
+    return 'String';
+  }
+
+  needsValue(suffix: string): boolean {
+    return conditionNeedsValue(suffix);
+  }
+
+  addFilter(): void {
+    this.patchList((body) => {
+      body.filters = [...(body.filters ?? []), emptyFilter()];
+    });
+  }
+
+  removeFilter(id: string): void {
+    this.patchList((body) => {
+      body.filters = (body.filters ?? []).filter((item) => item.id !== id);
+    });
+  }
+
+  setFilterLabel(id: string, event: Event): void {
+    this.patchFilter(id, { label: (event.target as HTMLInputElement).value });
+  }
+
+  setFilterType(id: string, event: Event): void {
+    const type = (event.target as HTMLSelectElement).value as CustomFilterType;
+    if (!this.filterTypes.includes(type)) return;
+    this.patchFilter(id, { type });
+  }
+
+  setFilterMode(id: string, event: Event): void {
+    const mode = (event.target as HTMLSelectElement).value as CustomFilterMode;
+    if (mode !== 'columns' && mode !== 'developer') return;
+    this.patchList((body) => {
+      const filter = (body.filters ?? []).find((item) => item.id === id);
+      if (!filter || filter.mode === mode) return;
+      filter.mode = mode;
+      if (mode === 'columns' && filter.conditions.length === 0) filter.conditions = [emptyCondition()];
+    });
+  }
+
+  setFilterName(id: string, event: Event): void {
+    this.patchFilter(id, { name: (event.target as HTMLInputElement).value });
+  }
+
+  setFilterSuffix(id: string, event: Event): void {
+    const suffix = (event.target as HTMLSelectElement).value;
+    if (!QUERY_CONDITIONS.some((item) => item.suffix === suffix)) return;
+    this.patchFilter(id, { suffix });
+  }
+
+  addCondition(filterId: string): void {
+    this.patchList((body) => {
+      const filter = (body.filters ?? []).find((item) => item.id === filterId);
+      if (!filter) return;
+      filter.conditions = [...filter.conditions, emptyCondition()];
+    });
+  }
+
+  removeCondition(filterId: string, conditionId: string): void {
+    this.patchList((body) => {
+      const filter = (body.filters ?? []).find((item) => item.id === filterId);
+      if (!filter) return;
+      filter.conditions = filter.conditions.filter((item) => item.id !== conditionId);
+    });
+  }
+
+  setConditionField(filterId: string, conditionId: string, event: Event): void {
+    this.patchCondition(filterId, conditionId, { fieldName: (event.target as HTMLSelectElement).value });
+  }
+
+  setConditionSuffix(filterId: string, conditionId: string, event: Event): void {
+    const suffix = (event.target as HTMLSelectElement).value;
+    if (!QUERY_CONDITIONS.some((item) => item.suffix === suffix)) return;
+    this.patchCondition(filterId, conditionId, conditionNeedsValue(suffix) ? { suffix } : { suffix, value: '', source: 'fixed' });
+  }
+
+  setConditionSource(filterId: string, conditionId: string, event: Event): void {
+    const source = (event.target as HTMLSelectElement).value as FilterValueSource;
+    if (source !== 'fixed' && source !== 'dynamic') return;
+    this.patchCondition(filterId, conditionId, source === 'dynamic' ? { source, value: '' } : { source });
+  }
+
+  setConditionValue(filterId: string, conditionId: string, event: Event): void {
+    this.patchCondition(filterId, conditionId, { value: (event.target as HTMLInputElement | HTMLSelectElement).value });
   }
 
   addPage(): void {
@@ -524,6 +614,33 @@ export class LayoutEditorComponent {
     }
   }
 
+  private patchList(mutator: (body: ListLayoutBody) => void): void {
+    this.body.update((body) => {
+      if (body.kind !== 'list') return body;
+      const next = structuredClone(body);
+      mutator(next);
+      return next;
+    });
+    this.saved.set(false);
+  }
+
+  private patchFilter(id: string, patch: Partial<CustomFilter>): void {
+    this.patchList((body) => {
+      const filter = (body.filters ?? []).find((item) => item.id === id);
+      if (!filter) return;
+      Object.assign(filter, patch);
+    });
+  }
+
+  private patchCondition(filterId: string, conditionId: string, patch: Partial<ColumnCondition>): void {
+    this.patchList((body) => {
+      const filter = (body.filters ?? []).find((item) => item.id === filterId);
+      const condition = filter?.conditions.find((item) => item.id === conditionId);
+      if (!condition) return;
+      Object.assign(condition, patch);
+    });
+  }
+
   private patchWizard(mutator: (body: WizardLayoutBody) => void): void {
     this.body.update((body) => {
       if (body.kind !== 'wizard') return body;
@@ -533,6 +650,22 @@ export class LayoutEditorComponent {
     });
     this.saved.set(false);
   }
+}
+
+function emptyCondition(): ColumnCondition {
+  return { id: crypto.randomUUID(), fieldName: '', suffix: '', source: 'dynamic', value: '' };
+}
+
+function emptyFilter(): CustomFilter {
+  return {
+    id: crypto.randomUUID(),
+    label: '',
+    type: 'string',
+    mode: 'columns',
+    conditions: [emptyCondition()],
+    name: '',
+    suffix: '',
+  };
 }
 
 function freshDrafts(table: string, only?: PageKind): LayoutDraft[] {

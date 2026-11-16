@@ -46,6 +46,11 @@ jobs:
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
           DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
         run: |
+          VERSION=$(sed -n "s/^export const APP_VERSION = '\\([0-9][0-9]*\\)';$/\\1/p" src/app/version.ts)
+          if [ -z "$VERSION" ]; then
+            echo "Could not read APP_VERSION" >&2
+            exit 1
+          fi
           if [ -n "$DOCKER_HUB_USERNAME" ] && [ -n "$DOCKER_HUB_ACCESS_TOKEN" ]; then
             echo "dockerhub=true" >> "$GITHUB_OUTPUT"
           else
@@ -53,8 +58,10 @@ jobs:
           fi
           {
             echo "tags<<EOF"
+            echo "ghcr.io/${{ github.repository }}:${VERSION}"
             echo "ghcr.io/${{ github.repository }}:latest"
             if [ -n "$DOCKER_HUB_USERNAME" ] && [ -n "$DOCKER_HUB_ACCESS_TOKEN" ]; then
+              echo "snellocms/snello-layouts:${VERSION}"
               echo "snellocms/snello-layouts:latest"
             fi
             echo "EOF"

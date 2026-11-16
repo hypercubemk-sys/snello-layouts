@@ -10,7 +10,7 @@ import { FormsModule } from '@angular/forms';
 import { seedBody } from '../core/layout-shape';
 import { FieldDefinition, LayoutDocument, PageKind } from '../core/models';
 import { LayoutStore } from '../core/layout-store';
-import { MetadataCatalog } from '../core/metadata-catalog';
+import { groupsOf, MetadataCatalog } from '../core/metadata-catalog';
 import { SnelloApi } from '../core/snello-api';
 import { Icon } from '../icon';
 import { MetaIcon } from '../meta-icon';
@@ -38,9 +38,11 @@ export class LayoutListComponent {
   readonly pendingId = signal<string | null>(null);
   readonly filtersOpen = signal(false);
   readonly draftName = signal('');
+  readonly draftGroup = signal('');
   readonly draftMetadata = signal('');
   readonly draftType = signal('');
   readonly appliedName = signal('');
+  readonly appliedGroup = signal('');
   readonly appliedMetadata = signal('');
   readonly appliedType = signal('');
   readonly bulkOpen = signal(false);
@@ -52,14 +54,20 @@ export class LayoutListComponent {
   readonly pageStart = signal(libraryPageStart(this.route.snapshot.queryParamMap));
   readonly pageSize = signal(libraryPageSize(this.route.snapshot.queryParamMap));
   readonly pageSizes = PAGE_SIZES;
+  readonly groups = computed(() => groupsOf(this.layouts().map((layout) => layout.metadataName), (table) => this.metadatas.groupOf(table)));
   readonly usedMetadata = computed(() => {
-    const names = [...new Set(this.layouts().map((layout) => layout.metadataName))].sort((left, right) => left.localeCompare(right));
+    const group = this.draftGroup();
+    const names = [...new Set(this.layouts().map((layout) => layout.metadataName))]
+      .filter((name) => !group || this.metadatas.groupOf(name) === group)
+      .sort((left, right) => left.localeCompare(right));
     return names.map((name) => ({ value: name, label: this.metadatas.find(name)?.description || name }));
   });
   readonly chips = computed(() => {
     const chips: { name: string; label: string; value: string }[] = [];
     const name = this.appliedName().trim();
     if (name) chips.push({ name: 'name', label: 'Name', value: name });
+    const group = this.appliedGroup();
+    if (group) chips.push({ name: 'group', label: 'Group', value: group });
     const metadata = this.appliedMetadata();
     if (metadata) chips.push({ name: 'metadata', label: 'Metadata', value: this.metadataLabel(metadata) });
     const type = this.appliedType();
@@ -68,10 +76,12 @@ export class LayoutListComponent {
   });
   readonly visible = computed(() => {
     const name = this.appliedName().trim().toLowerCase();
+    const group = this.appliedGroup();
     const metadata = this.appliedMetadata();
     const type = this.appliedType();
     return this.layouts().filter((layout) => {
       if (name && !layout.name.toLowerCase().includes(name)) return false;
+      if (group && this.metadatas.groupOf(layout.metadataName) !== group) return false;
       if (metadata && layout.metadataName !== metadata) return false;
       if (type && layout.pageType !== type) return false;
       return true;
@@ -111,17 +121,25 @@ export class LayoutListComponent {
   applyFilters(event?: Event): void {
     event?.preventDefault();
     this.appliedName.set(this.draftName());
+    this.appliedGroup.set(this.draftGroup());
     this.appliedMetadata.set(this.draftMetadata());
     this.appliedType.set(this.draftType());
     this.filtersOpen.set(false);
     this.publishPage(0);
   }
 
+  onGroup(value: string): void {
+    this.draftGroup.set(value);
+    if (value && this.metadatas.groupOf(this.draftMetadata()) !== value) this.draftMetadata.set('');
+  }
+
   clearFilters(): void {
     this.draftName.set('');
+    this.draftGroup.set('');
     this.draftMetadata.set('');
     this.draftType.set('');
     this.appliedName.set('');
+    this.appliedGroup.set('');
     this.appliedMetadata.set('');
     this.appliedType.set('');
     this.publishPage(0);

@@ -21,13 +21,27 @@
         </button>
       </h2>
     </div>
-    @if (!filtersOpen() && appliedMetadata()) {
+    @if (!filtersOpen() && (appliedGroup() || appliedMetadata())) {
       <ul class="applied">
-        <li><span>Metadata</span><strong>{{ metadataLabel(appliedMetadata()) }}</strong></li>
+        @if (appliedGroup()) {
+          <li><span>Group</span><strong>{{ appliedGroup() }}</strong></li>
+        }
+        @if (appliedMetadata()) {
+          <li><span>Metadata</span><strong>{{ metadataLabel(appliedMetadata()) }}</strong></li>
+        }
       </ul>
     }
     @if (filtersOpen()) {
       <form class="library-filters" (submit)="applyFilters($event)" (click)="$event.stopPropagation()">
+        <label>
+          Group
+          <select [value]="draftGroup()" (change)="onGroup($any($event.target).value)">
+            <option value="" [selected]="draftGroup() === ''">All</option>
+            @for (group of groups(); track group) {
+              <option [value]="group" [selected]="group === draftGroup()">{{ group }}</option>
+            }
+          </select>
+        </label>
         <label>
           Metadata
           <select [value]="draftMetadata()" (change)="draftMetadata.set($any($event.target).value)">
@@ -58,19 +72,12 @@
   <section class="card-page">
     <div class="cards">
       @for (layout of pageItems(); track layout.id) {
-        <article class="card">
+        <a class="card" [routerLink]="['/data', layout.id]">
           <p class="card-title">
             <app-meta-icon [icon]="metadatas.icon(layout.metadataName)" [label]="layout.metadataName" />
             <span class="card-name">{{ layout.name }}</span>
-            <span class="page-mark" title="List" aria-label="List">L</span>
           </p>
-          <div class="card-foot">
-            <time [attr.datetime]="layout.updatedAt">{{ layout.updatedAt | date: 'dd/MM/yy' }}</time>
-            <a class="icon-btn btn-primary" [routerLink]="['/data', layout.id]" aria-label="Open list" title="Open list">
-              <app-icon name="list" />
-            </a>
-          </div>
-        </article>
+        </a>
       }
     </div>
     <p-paginator
