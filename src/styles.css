@@ -137,6 +137,18 @@ p { margin: 0; }
 .user-tip span { color: var(--muted); font-size: 12px; margin-top: 6px; }
 .user-tip p { overflow-wrap: anywhere; }
 .user-tip .btn { justify-self: start; margin-top: 8px; }
+.help-back { z-index: 80; }
+.help-sheet { width: min(720px, 100%); }
+.help-search { display: grid; gap: 6px; color: var(--muted); font-size: 13px; }
+.help-body { display: grid; gap: 14px; }
+.help-body h2 { font-size: 13px; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+.help-body h3 { font-size: 16px; }
+.help-body h4 { margin: 8px 0 0; font-size: 14px; }
+.help-body p, .help-body li { font-size: 14px; line-height: 1.45; }
+.help-body ul, .help-body ol { margin: 0; padding-left: 1.2rem; display: grid; gap: 4px; }
+.help-body a { color: inherit; }
+.help-body code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: #f5f5f5; padding: 0 4px; border-radius: 4px; }
+.help-body mark, .help-body span.hit { background: #f3f3f3; color: inherit; padding: 0 2px; border-radius: 3px; }
 main { padding: 28px 32px 40px; }
 .crumbs {
   display: flex;
@@ -857,6 +869,8 @@ a.icon-btn {
 }
 .icon-btn:disabled:hover { background: transparent; }
 .topbar-tools .icon-btn { width: 32px; height: 32px; }
+.topbar-tools button.help-btn { width: 40px; height: 40px; }
+.topbar-tools button.help-btn svg { width: 24px; height: 24px; }
 .icon-btn.btn-primary { background: #171717; color: #fff; border-color: #171717; }
 .icon-btn.btn-primary:hover { background: #000; }
 .glyph { display: inline-flex; }

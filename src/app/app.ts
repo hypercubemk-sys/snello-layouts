@@ -6,6 +6,7 @@ import { filter, map } from 'rxjs';
 import { LayoutStore } from './core/layout-store';
 import { Session } from './core/session';
 import { Icon } from './icon';
+import { HelpDialog } from './help/help-dialog';
 import { APP_VERSION } from './version';
 
 interface Crumb {
@@ -15,7 +16,7 @@ interface Crumb {
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, HelpDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './app.html',
 })
@@ -34,6 +35,7 @@ export class App {
   readonly crumbs = computed(() => this.trail(this.path() ?? '/'));
   readonly menuOpen = signal(false);
   readonly userOpen = signal(false);
+  readonly helpOpen = signal(false);
   readonly profile = this.session.user;
   readonly version = APP_VERSION;
 
@@ -43,12 +45,20 @@ export class App {
 
   toggleMenu(): void {
     this.userOpen.set(false);
+    this.helpOpen.set(false);
     this.menuOpen.update((open) => !open);
   }
 
   toggleUser(): void {
     this.menuOpen.set(false);
+    this.helpOpen.set(false);
     this.userOpen.update((open) => !open);
+  }
+
+  toggleHelp(): void {
+    this.menuOpen.set(false);
+    this.userOpen.set(false);
+    this.helpOpen.update((open) => !open);
   }
 
   closeMenus(): void {

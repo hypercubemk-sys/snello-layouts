@@ -28,6 +28,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         @case ('list') { <path d="M3 4.5h10M3 8h10M3 11.5h10" /> }
         @case ('home') { <path d="M2.5 7.2 8 2.8l5.5 4.4V13a.8.8 0 0 1-.8.8H3.3a.8.8 0 0 1-.8-.8z" /><path d="M6.4 13.8V9.2h3.2v4.6" /> }
         @case ('eye') { <path d="M1.5 8S4 4.5 8 4.5 14.5 8 14.5 8 12 11.5 8 11.5 1.5 8 1.5 8z" /><circle cx="8" cy="8" r="1.6" /> }
+        @case ('help') { <circle cx="8" cy="8" r="5.2" /><path d="M6.4 6.3a1.7 1.7 0 1 1 2.5 1.5c-.5.3-.9.7-.9 1.4M8 11.3h.01" /> }
         @case ('info') { <circle cx="8" cy="8" r="5.2" /><path d="M8 7.3v3.8M8 5.2h.01" /> }
         @case ('image') { <path d="M2.5 3.5h11v9h-11zM2.5 10l3-2.5 2 1.5 2.5-3 3 4" /> }
         @case ('upload') { <path d="M8 10.5V3.5M5.5 6 8 3.5 10.5 6M3.5 12.5h9" /> }

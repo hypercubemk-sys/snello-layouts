@@ -1,28 +1,28 @@
 # Snello Layouts
 
-Applicazione Angular 22 zoneless per comporre i layout Snello e aprire i dati dei metadati. I form usano Formly. L’interfaccia è in inglese.
+Zoneless Angular 22 app for composing Snello layouts and opening metadata records. Forms use Formly. The interface is in English.
 
-I layout non restano nel browser: ogni lettura è una GET e ogni salvataggio è una POST o una PUT verso l’API layouts di Snello.
+Layouts are not stored in the browser. Every read is a GET and every save is a POST or PUT to the Snello layouts API.
 
-## Sezioni
+## Sections
 
-- **Layouts** (`/layouts`) è la libreria. Si crea e si modifica un layout di tipo list, edit o view. Le liste si filtrano per nome, metadata group, metadato e tipo.
-- **Data** (`/data`) elenca solo i layout di tipo list. La card apre la lista dei record (`/data/:id`). Da lì si consulta, si crea e si modifica il dato, senza link all’editor del layout. `/play/:id` reindirizza a `/data/:id`.
+- **Layouts** (`/layouts`) is the library. Create and edit a list, edit, or view layout. Filter the library by name, metadata group, metadata, and type.
+- **Data** (`/data`) lists only list layouts. The card opens the record list (`/data/:id`). From there you view, create, and edit records, with no link back to the layout editor. `/play/:id` redirects to `/data/:id`.
 
-Un layout list definisce colonne, ricerca e filtri custom. Un filtro custom ha etichetta e tipo (`string`, `boolean`, `date`, `numeric`) e poi o condizioni sui campi, fisse o col valore inserito, oppure un nome e una condizione REST. L’elenco delle condizioni è quello di [snello-api](https://github.com/snello-cms/snello-api/blob/main/docs/rest-query-params.md#quick-reference).
+A list layout defines columns, search, and custom filters. A custom filter has a label and a type (`string`, `boolean`, `date`, `numeric`), then either column conditions (fixed or based on the entered value) or a name plus a REST condition. The condition list is the one in [snello-api](https://github.com/snello-cms/snello-api/blob/main/docs/rest-query-params.md#quick-reference).
 
-## Avvio
+## Start
 
 ```bash
 npm install
 npm start
 ```
 
-Apri `http://localhost:4200`. Il client Keycloak `snello-admin` deve accettare `http://localhost:4200` come redirect di login.
+Open `http://localhost:4200`. The Keycloak client `snello-admin` must allow `http://localhost:4200` as a login redirect.
 
-## Configurazione
+## Configuration
 
-All’avvio l’app legge `/config.json`. Nel deploy si può sostituire quel file: nginx lo serve con `Cache-Control: no-store` da `/usr/share/nginx/html/config.json`.
+On startup the app reads `/config.json`. A deploy can replace that file: nginx serves it with `Cache-Control: no-store` from `/usr/share/nginx/html/config.json`.
 
 ```json
 {
@@ -40,15 +40,15 @@ All’avvio l’app legge `/config.json`. Nel deploy si può sostituire quel fil
 }
 ```
 
-Le GET delle API di prova sono pubbliche. Le scritture dei layout richiedono un utente Admin o Manager.
+GETs on the trial API are public. Layout writes require an Admin or Manager user.
 
-## Versione e immagine
+## Version and image
 
-Il menu utente mostra la versione. In locale è `src/app/version.ts`: ogni commit alza il patch, da `0.0.1` a `0.0.2` e così via.
+The account menu shows the version. Locally it comes from `src/app/version.ts`: each commit raises the patch, from `0.0.1` to `0.0.2` and so on.
 
-Il push su `main` pubblica l’immagine nginx. La action legge i tag `0.0.x` già presenti su GHCR e Docker Hub, compila l’app con il numero successivo e pubblica sia quel tag sia `latest`:
+A push to `main` publishes the nginx image. The action reads the `0.0.x` tags already on GHCR and Docker Hub, builds the app with the next number, and publishes that tag together with `latest`:
 
 - `ghcr.io/snello-cms/snello-layouts`
-- `snellocms/snello-layouts`, se nel repository sono impostati `DOCKER_HUB_USERNAME` e `DOCKER_HUB_ACCESS_TOKEN`
+- `snellocms/snello-layouts`, when `DOCKER_HUB_USERNAME` and `DOCKER_HUB_ACCESS_TOKEN` are set on the repository
 
-Il container ascolta sulla porta 80.
+The container listens on port 80.

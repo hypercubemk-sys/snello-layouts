@@ -1,0 +1,67 @@
+<div class="sheet-back help-back" (click)="close()">
+  <section class="sheet help-sheet" role="dialog" aria-modal="true" aria-label="Help" (click)="$event.stopPropagation()">
+    <header>
+      <strong>Help</strong>
+      <button type="button" class="icon-btn" aria-label="Close" title="Close" (click)="close()">
+        <app-icon name="close" />
+      </button>
+    </header>
+    <label class="help-search">
+      Search
+      <input [value]="query()" (input)="onQuery($event)" placeholder="Layouts, filters, records…" />
+    </label>
+    @if (status() === 'loading') {
+      <p class="muted">Loading the guide…</p>
+    } @else if (status() === 'error') {
+      <p class="banner">The guide is unavailable.</p>
+    } @else if (visible().length === 0) {
+      <p class="muted">No matching topics.</p>
+    } @else {
+      <div class="help-body">
+        @for (section of visible(); track section.id; let index = $index) {
+          @if (index === 0 || visible()[index - 1].document !== section.document) {
+            <h2>{{ section.document }}</h2>
+          }
+          <article>
+            @if (section.heading !== section.document) {
+              <h3>{{ section.heading }}</h3>
+            }
+            @for (block of section.blocks; track $index) {
+              @switch (block.kind) {
+                @case ('h3') {
+                  <h4>@for (part of block.parts; track trackPart(part, $index)) {<ng-container [ngTemplateOutlet]="inline" [ngTemplateOutletContext]="{ part: part }" />}</h4>
+                }
+                @case ('p') {
+                  <p>@for (part of block.parts; track trackPart(part, $index)) {<ng-container [ngTemplateOutlet]="inline" [ngTemplateOutletContext]="{ part: part }" />}</p>
+                }
+                @case ('ul') {
+                  <ul>
+                    @for (item of block.items; track $index) {
+                      <li>@for (part of item; track trackPart(part, $index)) {<ng-container [ngTemplateOutlet]="inline" [ngTemplateOutletContext]="{ part: part }" />}</li>
+                    }
+                  </ul>
+                }
+                @case ('ol') {
+                  <ol>
+                    @for (item of block.items; track $index) {
+                      <li>@for (part of item; track trackPart(part, $index)) {<ng-container [ngTemplateOutlet]="inline" [ngTemplateOutletContext]="{ part: part }" />}</li>
+                    }
+                  </ol>
+                }
+              }
+            }
+          </article>
+        }
+      </div>
+    }
+  </section>
+</div>
+
+<ng-template #inline let-part="part">
+  @switch (part.kind) {
+    @case ('strong') {<strong>@for (piece of pieces(part.value); track $index) {<span [class.hit]="piece.hit">{{ piece.value }}</span>}</strong>}
+    @case ('code') {<code>{{ part.value }}</code>}
+    @case ('link') {<a [href]="part.href" target="_blank" rel="noopener">{{ part.value }}</a>}
+    @default {@for (piece of pieces(part.value); track $index) {<span [class.hit]="piece.hit">{{ piece.value }}</span>}}
+  }
+</ng-template>

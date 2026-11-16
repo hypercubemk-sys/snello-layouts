@@ -121,8 +121,8 @@ function materializeSearch(field: FieldDefinition, mode: SearchMode): FieldDefin
   if (mode === 'range') {
     const dated = DATE_SEARCH.has(logicalFieldType(field));
     return [
-      { ...field, name: `${name}__min`, label: dated ? label : `${label} da`, search_condition: 'gte', search_field_name: `${name}_gte` },
-      { ...field, name: `${name}__max`, label: dated ? label : `${label} a`, search_condition: 'lte', search_field_name: `${name}_lte` },
+      { ...field, name: `${name}__min`, label: dated ? label : `${label} from`, search_condition: 'gte', search_field_name: `${name}_gte` },
+      { ...field, name: `${name}__max`, label: dated ? label : `${label} to`, search_condition: 'lte', search_field_name: `${name}_lte` },
     ];
   }
   if (mode === 'like') {

@@ -48,6 +48,9 @@
         </nav>
       </div>
       <div class="topbar-tools">
+        <button type="button" class="icon-btn help-btn" aria-label="Help" title="Help" [attr.aria-expanded]="helpOpen()" (click)="toggleHelp()">
+          <app-icon name="help" />
+        </button>
         <div class="user-wrap">
           <button type="button" class="avatar" [attr.aria-label]="profile().name || profile().username || 'Account'" [attr.aria-expanded]="userOpen()" (click)="toggleUser()">
             {{ profile().initial }}
@@ -74,6 +77,9 @@
         </div>
       </div>
     </header>
+    @if (helpOpen()) {
+      <app-help-dialog (closed)="helpOpen.set(false)" />
+    }
     <main>
       <router-outlet />
     </main>
