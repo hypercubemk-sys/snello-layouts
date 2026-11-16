@@ -1,5 +1,5 @@
 #!/bin/sh
-# Each commit after the version file is tracked raises APP_VERSION by 1.
+# Each commit after the version file is tracked raises the patch number: 0.0.1, 0.0.2, ...
 # A commit that already stages this file keeps the version it introduces.
 file=src/app/version.ts
 if ! git ls-files --error-unmatch -- "$file" >/dev/null 2>&1; then
@@ -8,13 +8,14 @@ fi
 if git diff --cached --name-only -- "$file" | grep -q .; then
   exit 0
 fi
-current=$(sed -n "s/^export const APP_VERSION = '\\([0-9][0-9]*\\)';$/\\1/p" "$file")
-case "$current" in
-  ''|*[!0-9]*)
-    echo "pre-commit: could not read APP_VERSION from $file" >&2
-    exit 1
-    ;;
-esac
-next=$((current + 1))
-printf "export const APP_VERSION = '%s';\n" "$next" > "$file"
+current=$(sed -n "s/^export const APP_VERSION = '\\([0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*\\)';$/\\1/p" "$file")
+if ! printf '%s' "$current" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+  echo "pre-commit: could not read APP_VERSION from $file" >&2
+  exit 1
+fi
+major=${current%%.*}
+rest=${current#*.}
+minor=${rest%%.*}
+patch=${current##*.}
+printf "export const APP_VERSION = '%s';\n" "$major.$minor.$((patch + 1))" > "$file"
 git add -- "$file"

@@ -13,6 +13,9 @@ jobs:
   publish:
     name: Publish image
     runs-on: ubuntu-latest
+    concurrency:
+      group: publish-image
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,6 +33,41 @@ jobs:
           node-version: '24'
           cache: 'npm'
 
+      - name: Resolve next version
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY%%/*}"
+          pkg="${GITHUB_REPOSITORY#*/}"
+          : > /tmp/published-tags
+          for path in "/orgs/${owner}/packages/container/${pkg}/versions" "/users/${owner}/packages/container/${pkg}/versions"; do
+            if gh api --paginate --jq '.[] | .metadata.container.tags[]? // empty' "$path" >> /tmp/published-tags 2>/dev/null; then
+              break
+            fi
+          done
+          url="https://hub.docker.com/v2/repositories/snellocms/${pkg}/tags?page_size=100"
+          while [ -n "$url" ]; do
+            body=$(curl -fsS "$url" || true)
+            [ -z "$body" ] && break
+            printf '%s\n' "$body" | jq -r '.results[].name' >> /tmp/published-tags
+            url=$(printf '%s' "$body" | jq -r '.next // empty')
+          done
+          current=$(grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' /tmp/published-tags | sort -V | tail -1 || true)
+          if [ -z "$current" ]; then
+            next="0.0.1"
+          else
+            major=${current%%.*}
+            rest=${current#*.}
+            minor=${rest%%.*}
+            patch=${current##*.}
+            next="${major}.${minor}.$((patch + 1))"
+          fi
+          printf "export const APP_VERSION = '%s';\n" "$next" > src/app/version.ts
+          echo "version=${next}" >> "$GITHUB_OUTPUT"
+          echo "Next version ${next} (previous ${current:-none})"
+
       - name: Build the app
         run: npm ci && npm run build
 
@@ -46,7 +84,7 @@ jobs:
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
           DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
         run: |
-          VERSION=$(sed -n "s/^export const APP_VERSION = '\\([0-9][0-9]*\\)';$/\\1/p" src/app/version.ts)
+          VERSION="${{ steps.version.outputs.version }}"
           if [ -z "$VERSION" ]; then
             echo "Could not read APP_VERSION" >&2
             exit 1
