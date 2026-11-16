@@ -32,6 +32,7 @@ const MENU_FIELD = new Set(['select', 'multiselect', 'join', 'lookup', 'multijoi
 const LINKED = new Set(['join', 'lookup', 'multijoin', 'multilookup', 'select', 'multiselect']);
 const COLUMN_KEY = 'snello.list.columns.';
 const PAGE_SIZES = [10, 20, 50];
+const listRevision = signal(0);
 
 interface LabelBatch {
   table: string;
@@ -78,6 +79,10 @@ export class LayoutPlayComponent {
   readonly recordKey = signal('');
   readonly filterParams = signal<Record<string, string>>({});
   readonly result = signal<Record<string, unknown> | null>(null);
+  readonly saving = signal(false);
+  readonly saved = signal(false);
+  readonly saveError = signal('');
+  readonly deleteAsk = signal(false);
   readonly linkedLabels = signal<Record<string, string>>({});
   readonly labelsLoading = signal(false);
   private labelTicket = 0;
@@ -188,6 +193,7 @@ export class LayoutPlayComponent {
   });
 
   readonly rows = httpResource<Record<string, unknown>[]>(() => {
+    listRevision();
     const layout = this.layout();
     if (!layout || layout.body.kind !== 'list') return undefined;
     const params: Record<string, string | number | boolean> = {
@@ -279,6 +285,7 @@ export class LayoutPlayComponent {
       const id = this.id();
       const record = this.embedded() ? this.rowKey() : this.routeRecord();
       untracked(() => {
+        if (this.saved() && record === this.recordKey()) return;
         this.step.set(0);
         this.total.set(0);
         this.sortField.set(null);
@@ -291,6 +298,9 @@ export class LayoutPlayComponent {
         this.clearFilterModel();
         this.recordKey.set(record);
         this.result.set(null);
+        this.saved.set(false);
+        this.saveError.set('');
+        this.deleteAsk.set(false);
         this.replaceModel({});
         this.formTick.update((value) => value + 1);
       });
@@ -578,6 +588,67 @@ export class LayoutPlayComponent {
     queueMicrotask(() => document.querySelector('.drawer pre.code, .wizard pre.code')?.scrollIntoView({ block: 'nearest' }));
   }
 
+  askDelete(): void {
+    this.deleteAsk.set(true);
+  }
+
+  cancelDelete(): void {
+    this.deleteAsk.set(false);
+  }
+
+  async saveRecord(): Promise<void> {
+    const layout = this.layout();
+    if (!layout || layout.pageType !== 'edit' || this.openedAt() !== '/data' || this.saving()) return;
+    this.saved.set(false);
+    this.saveError.set('');
+    if (!this.readyToSave()) return;
+    const id = this.recordKey();
+    const payload = this.outgoingPayload();
+    this.saving.set(true);
+    try {
+      const saved = id
+        ? await firstValueFrom(this.http.put<Record<string, unknown>>(this.recordUrl(id), payload))
+        : await firstValueFrom(this.http.post<Record<string, unknown>>(this.recordUrl(), payload));
+      listRevision.update((value) => value + 1);
+      this.saved.set(true);
+      const nextId = this.savedId(saved);
+      if (!id && nextId) {
+        this.recordKey.set(nextId);
+        void this.router.navigate([], {
+          queryParams: { modId: nextId, viewId: null, side: null, row: null, record: null },
+          queryParamsHandling: 'merge',
+        });
+      } else if (id) {
+        this.record.reload();
+      }
+    } catch {
+      this.saveError.set("Can't save the record.");
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  async confirmDelete(): Promise<void> {
+    const id = this.recordKey();
+    if (!id || this.saving()) return;
+    this.saving.set(true);
+    this.saveError.set('');
+    this.saved.set(false);
+    try {
+      await firstValueFrom(this.http.delete(this.recordUrl(id), { responseType: 'text' }));
+      listRevision.update((value) => value + 1);
+      this.deleteAsk.set(false);
+      void this.router.navigate([], {
+        queryParams: { viewId: null, modId: null, side: null, row: null, record: null },
+        queryParamsHandling: 'merge',
+      });
+    } catch {
+      this.saveError.set("Can't delete the record.");
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
   submit(): void {
     this.showSource();
   }
@@ -672,6 +743,41 @@ export class LayoutPlayComponent {
     return this.metadataResource.value();
   }
 
+  private readyToSave(): boolean {
+    const layout = this.layout();
+    if (!layout || layout.body.kind !== 'wizard') return false;
+    this.touchAll();
+    const form = this.entryForm();
+    let invalidStep: number | null = form.invalid ? this.step() : null;
+    for (let index = 0; index < layout.body.pages.length; index += 1) {
+      const page = layout.body.pages[index];
+      if (!page) continue;
+      for (const box of page.boxes) {
+        for (const field of box.fields) {
+          if (!field.required) continue;
+          const control = form.get(field.fieldName);
+          const missing = control ? control.invalid : isEmptyRecordValue(this.model[field.fieldName]);
+          if (missing && invalidStep == null) invalidStep = index;
+        }
+      }
+    }
+    if (invalidStep == null) return true;
+    this.step.set(invalidStep);
+    return false;
+  }
+
+  private recordUrl(id?: string): string {
+    const table = encodeURIComponent(this.layout()?.metadataName ?? '');
+    const base = `${this.api.records}/${table}`;
+    return id ? `${base}/${encodeURIComponent(id)}` : base;
+  }
+
+  private savedId(saved: Record<string, unknown> | null | undefined): string {
+    const key = this.currentMetadata()?.table_key || 'uuid';
+    const value = saved?.[key] ?? saved?.['uuid'];
+    return value == null || value === '' ? '' : String(value);
+  }
+
   private touchCurrent(): boolean {
     return this.touch(this.currentNames());
   }
@@ -724,6 +830,13 @@ export class LayoutPlayComponent {
     for (const key of Object.keys(this.model)) delete this.model[key];
     Object.assign(this.model, next);
   }
+}
+
+function isEmptyRecordValue(value: unknown): boolean {
+  if (value == null) return true;
+  if (typeof value === 'string') return value.trim() === '';
+  if (Array.isArray(value)) return value.length === 0;
+  return false;
 }
 
 function listPageSize(params: ParamMap | null | undefined): number {

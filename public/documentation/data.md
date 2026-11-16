@@ -45,6 +45,10 @@ The form can have more than one page. The line at the top is the current step an
 
 The left arrow goes to the previous page. It is disabled on the first page, and when the form has only one page. The right arrow goes to the next page. Required fields on the current page must be filled before you can leave it.
 
+On an edit form, the check button saves the record. **Create** inserts a new record. **Update** writes the open record. If a required field is empty, the form stays on that page and nothing is sent.
+
+The trash icon deletes the open record. It first asks **Delete?** Confirm with the check, or cancel with the X. A new record that has not been saved yet has no delete button.
+
 **Show if** fields stay hidden until the linked field has a value. A checkbox counts as a value when it is checked. An empty text, an empty list, and a false checkbox do not.
 
-On an edit form, the code icon is **Source**. It shows the JSON of the record as it would be sent, including the fields placed on the layout. Press Source again to hide it.
+On the last page, the code icon is **Source**. It shows the JSON of the record as it would be sent, including the fields placed on the layout. Press Source again to hide it.

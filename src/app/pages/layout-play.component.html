@@ -209,6 +209,26 @@
         <formly-form [form]="entryForm()" [fields]="entryFields()" [model]="model" />
         <div class="row-actions">
           <button type="button" class="icon-btn" aria-label="Back" title="Back" (click)="previousStep()" [disabled]="pageCount() <= 1 || step() === 0"><app-icon name="back" /></button>
+          @if (layout()?.pageType === 'edit' && openedAt() === '/data') {
+            @if (deleteAsk()) {
+              <span class="confirm-ask">Delete?</span>
+              <button type="button" class="icon-btn btn-primary" aria-label="Confirm delete" title="Confirm delete" [disabled]="saving()" (click)="confirmDelete()">
+                <app-icon name="check" />
+              </button>
+              <button type="button" class="icon-btn" aria-label="Cancel" title="Cancel" (click)="cancelDelete()">
+                <app-icon name="close" />
+              </button>
+            } @else {
+              @if (recordKey()) {
+                <button type="button" class="icon-btn" aria-label="Delete" title="Delete" [disabled]="saving()" (click)="askDelete()">
+                  <app-icon name="trash" />
+                </button>
+              }
+              <button type="button" class="icon-btn btn-primary" [attr.aria-label]="recordKey() ? 'Update' : 'Create'" [attr.title]="recordKey() ? 'Update' : 'Create'" [disabled]="saving()" (click)="saveRecord()">
+                <app-icon name="check" />
+              </button>
+            }
+          }
           @if (step() < pageCount() - 1) {
             <button type="button" class="icon-btn btn-primary" aria-label="Next" title="Next" (click)="nextStep()"><app-icon name="forward" /></button>
           } @else if (layout()?.pageType === 'edit' && openedAt() === '/data') {
@@ -216,6 +236,12 @@
           }
         </div>
       </form>
+      @if (saveError()) {
+        <p class="banner">{{ saveError() }}</p>
+      }
+      @if (saved()) {
+        <p class="banner ok">Record saved.</p>
+      }
       @if (openedAt() === '/data' && result()) {
         <pre class="code">{{ resultText() }}</pre>
       }
