@@ -202,7 +202,9 @@
         <p class="muted">Loading the record…</p>
       }
       <div class="stepper">
-        <span>Step {{ step() + 1 }} of {{ pageCount() }}</span>
+        @if (pageCount() > 1) {
+          <span>Step {{ step() + 1 }} of {{ pageCount() }}</span>
+        }
         <strong>{{ pageTitle() }}</strong>
       </div>
       <form [formGroup]="entryForm()" (ngSubmit)="submit()">
@@ -220,7 +222,7 @@
               </button>
             } @else {
               @if (recordKey()) {
-                <button type="button" class="icon-btn" aria-label="Delete" title="Delete" [disabled]="saving()" (click)="askDelete()">
+                <button type="button" class="icon-btn btn-primary" aria-label="Delete" title="Delete" [disabled]="saving()" (click)="askDelete()">
                   <app-icon name="trash" />
                 </button>
               }

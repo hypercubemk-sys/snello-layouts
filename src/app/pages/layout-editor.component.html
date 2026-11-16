@@ -5,8 +5,11 @@
   </div>
   <div class="row-actions">
     <a class="icon-btn" routerLink="/layouts" aria-label="Library" title="Library"><app-icon name="back" /></a>
+    @if (viewTargets().length) {
+      <button type="button" class="btn btn-primary" (click)="updateViews()" [disabled]="saving()">Update the view too</button>
+    }
     @if (id()) {
-      <button type="button" class="icon-btn btn-primary" aria-label="Save" title="Save" (click)="save()" [disabled]="!metadataName()">
+      <button type="button" class="icon-btn btn-primary" aria-label="Save" title="Save" (click)="save()" [disabled]="!metadataName() || saving()">
         <app-icon name="check" />
       </button>
     } @else {
@@ -22,6 +25,9 @@
 }
 @if (saved()) {
   <p class="banner ok">Layout saved.</p>
+}
+@if (viewNotice()) {
+  <p class="banner ok">{{ viewNotice() }}</p>
 }
 @if (metadatas.resource.status() === 'error') {
   <p class="banner">Can't read metadata from api.sne.lol.</p>

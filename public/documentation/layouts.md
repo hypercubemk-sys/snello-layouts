@@ -62,7 +62,7 @@ On each field:
 - **Full**, **Half**, and **Third** set the width.
 - The arrows move the field. The minus removes it.
 
-Save with the check button in the page header.
+Save with the check button in the page header. On an edit layout, **Update the view too** copies the pages, blocks, and fields onto every view of the same metadata. It is shown only when that view already exists.
 
 ## Custom filters
 

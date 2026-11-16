@@ -60,6 +60,8 @@ export class LayoutEditorComponent {
   readonly selectedBoxId = signal<string | null>(null);
   readonly pendingSeed = signal(false);
   readonly saved = signal(false);
+  readonly viewNotice = signal('');
+  readonly saving = signal(false);
   readonly loadError = signal('');
   readonly showJson = signal(false);
   readonly drafts = signal<LayoutDraft[]>(freshDrafts(''));
@@ -115,6 +117,10 @@ export class LayoutEditorComponent {
   readonly existingForMetadata = computed(() =>
     this.store.all().filter((item) => item.metadataName === this.metadataName()),
   );
+  readonly viewTargets = computed(() => {
+    if (!this.id() || this.pageType() !== 'edit' || this.body().kind !== 'wizard') return [];
+    return this.store.all().filter((item) => item.metadataName === this.metadataName() && item.pageType === 'view');
+  });
   readonly jsonText = computed(() => JSON.stringify(this.body(), null, 2));
 
   constructor() {
@@ -190,6 +196,7 @@ export class LayoutEditorComponent {
   onName(event: Event): void {
     this.name.set((event.target as HTMLInputElement).value);
     this.saved.set(false);
+    this.viewNotice.set('');
   }
 
   onMetadata(select: HTMLSelectElement): void {
@@ -201,6 +208,7 @@ export class LayoutEditorComponent {
     }
     this.metadataName.set(name);
     this.saved.set(false);
+    this.viewNotice.set('');
     this.drafts.set(freshDrafts(name));
     if (this.id()) {
       this.name.set(name ? `${name} ${this.pageType()}` : '');
@@ -214,6 +222,7 @@ export class LayoutEditorComponent {
     if (crossing && this.metadataName() && !window.confirm('Switching between list and form rebuilds the body. Continue?')) return;
     this.pageType.set(kind);
     this.saved.set(false);
+    this.viewNotice.set('');
     if (this.metadataName()) this.name.set(`${this.metadataName()} ${kind}`);
     if (crossing && this.metadataName()) this.pendingSeed.set(true);
   }
@@ -569,18 +578,48 @@ export class LayoutEditorComponent {
 
   save(): void {
     const metadataName = this.metadataName();
-    if (!metadataName) return;
+    if (!metadataName || this.saving()) return;
+    void this.persist([this.currentDocument()]);
+  }
+
+  async updateViews(): Promise<void> {
+    const body = this.body();
+    const views = this.viewTargets();
+    if (body.kind !== 'wizard' || views.length === 0 || this.saving()) return;
+    this.saving.set(true);
+    this.loadError.set('');
+    this.saved.set(false);
+    this.viewNotice.set('');
+    try {
+      await this.store.save(this.currentDocument());
+      const arrangement = structuredClone(body);
+      for (const view of views) {
+        await this.store.save({
+          ...view,
+          updatedAt: new Date().toISOString(),
+          body: structuredClone(arrangement),
+        });
+      }
+      this.viewNotice.set(views.length === 1 ? 'View updated.' : 'Views updated.');
+    } catch {
+      this.loadError.set("Can't update the view.");
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  private currentDocument(): LayoutDocument {
+    const metadataName = this.metadataName();
     const metadata = this.metadataOptions().find((item) => item.table_name === metadataName);
-    const id = this.id() || crypto.randomUUID();
-    void this.persist([{
-      id,
+    return {
+      id: this.id() || crypto.randomUUID(),
       name: this.name().trim() || `${metadataName} ${this.pageType()}`,
       metadataName,
       metadataUuid: metadata?.uuid ?? '',
       pageType: this.pageType(),
       updatedAt: new Date().toISOString(),
       body: this.body(),
-    }]);
+    };
   }
 
   private async persist(documents: LayoutDocument[]): Promise<void> {
@@ -622,6 +661,7 @@ export class LayoutEditorComponent {
       return next;
     });
     this.saved.set(false);
+    this.viewNotice.set('');
   }
 
   private patchFilter(id: string, patch: Partial<CustomFilter>): void {
@@ -649,6 +689,7 @@ export class LayoutEditorComponent {
       return next;
     });
     this.saved.set(false);
+    this.viewNotice.set('');
   }
 }
 

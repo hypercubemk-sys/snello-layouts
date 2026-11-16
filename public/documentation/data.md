@@ -41,7 +41,7 @@ A view shows the values. An edit shows the form defined in the layout.
 
 ## Move through the form
 
-The form can have more than one page. The line at the top is the current step and the page title.
+The form can have more than one page. When it does, the line at the top shows the current step and the page title. A form with one page shows only the page title.
 
 The left arrow goes to the previous page. It is disabled on the first page, and when the form has only one page. The right arrow goes to the next page. Required fields on the current page must be filled before you can leave it.
 
