@@ -45,12 +45,22 @@ interface LabelBatch {
   ids: string[];
 }
 
+interface DockWindow {
+  key: string;
+  mode: 'view' | 'edit';
+  record: string;
+  minimized: boolean;
+}
+
 @Component({
   selector: 'app-layout-play',
   imports: [RouterLink, FormsModule, ReactiveFormsModule, FormlyModule, CheckboxModule, Icon, MetaIcon, Paginator, ListValue, NgComponentOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './layout-play.component.html',
-  host: { '[class.play-embedded]': 'embedded()' },
+  host: {
+    '[class.play-embedded]': 'embedded()',
+    '[class.with-dock]': 'minimizedWindows().length > 0',
+  },
 })
 export class LayoutPlayComponent {
   private readonly api = inject(SnelloApi);
@@ -63,6 +73,8 @@ export class LayoutPlayComponent {
   readonly id = input.required<string>();
   readonly embedded = input(false);
   readonly rowKey = input('');
+  readonly onRecordKey = input<((id: string) => void) | undefined>(undefined);
+  readonly onClosed = input<(() => void) | undefined>(undefined);
   readonly entryOutlet = LayoutPlayComponent;
   readonly layout = computed(() => this.store.find(this.id()));
   readonly layoutsReady = this.store.ready;
@@ -138,26 +150,11 @@ export class LayoutPlayComponent {
   });
 
   readonly createLayout = computed(() => this.operations().find((item) => item.pageType === 'edit') ?? null);
-  readonly sideTarget = computed(() => {
-    if (this.embedded() || this.layout()?.pageType !== 'list') return null;
-    const params = this.query();
-    if (!params) return null;
-    const viewId = params.get('viewId');
-    if (viewId) return { mode: 'view' as const, record: viewId };
-    if (params.has('modId')) return { mode: 'edit' as const, record: params.get('modId') ?? '' };
-    return null;
-  });
-  readonly sideRecord = computed(() => this.sideTarget()?.record ?? '');
-  readonly sideLayout = computed(() => {
-    const mode = this.sideTarget()?.mode;
-    if (!mode) return null;
-    return this.operations().find((item) => item.pageType === mode) ?? null;
-  });
-  readonly sideInputs = computed(() => ({
-    id: this.sideLayout()?.id ?? '',
-    embedded: true,
-    rowKey: this.sideRecord(),
-  }));
+  readonly windows = signal<DockWindow[]>([]);
+  private windowsList = '';
+  readonly activeKey = signal('');
+  readonly minimizedWindows = computed(() => this.windows().filter((win) => win.minimized));
+  readonly openWindows = computed(() => this.windows().filter((win) => !win.minimized));
 
   readonly operations = computed(() => {
     const layout = this.layout();
@@ -284,19 +281,19 @@ export class LayoutPlayComponent {
       });
     });
 
-    effect((onCleanup) => {
-      if (this.embedded() || this.layout()?.pageType !== 'list') return;
-      document.body.style.overflow = this.sideLayout() ? 'hidden' : '';
-      onCleanup(() => {
-        document.body.style.overflow = '';
-      });
-    });
-
     effect(() => {
       const id = this.id();
       const record = this.embedded() ? this.rowKey() : this.routeRecord();
       untracked(() => {
         if (this.saved() && record === this.recordKey()) return;
+        const listId = !this.embedded() && this.layout()?.pageType === 'list' ? id : '';
+        if (listId !== this.windowsList) {
+          this.windowsList = listId;
+          if (listId) {
+            this.windows.set([]);
+            this.activeKey.set('');
+          }
+        }
         this.step.set(0);
         this.total.set(0);
         this.sortField.set(null);
@@ -382,24 +379,74 @@ export class LayoutPlayComponent {
       });
       void this.loadLabels(batches, ticket);
     });
+
+    effect(() => {
+      if (this.embedded() || this.layout()?.pageType !== 'list') return;
+      const params = this.query();
+      const viewId = params?.get('viewId') ?? '';
+      const hasMod = params?.has('modId') ?? false;
+      if (!viewId && !hasMod) return;
+      const modId = params?.get('modId') ?? '';
+      untracked(() => this.consumeRouteWindow(viewId, hasMod, modId));
+    });
   }
 
-  closeSide(): void {
-    void this.router.navigate([], {
-      queryParams: { viewId: null, modId: null, side: null, row: null, record: null },
-      queryParamsHandling: 'merge',
-    });
+  openWindow(mode: string, record: string): void {
+    if (mode !== 'view' && mode !== 'edit') return;
+    const same = this.windows().find((win) => win.mode === mode && win.record === record);
+    if (same) {
+      this.restore(same.key);
+      return;
+    }
+    const key = crypto.randomUUID();
+    this.windows.update((list) => [...list, { key, mode, record, minimized: false }]);
+    this.activeKey.set(key);
+  }
+
+  windowLayout(win: DockWindow) {
+    return this.operations().find((item) => item.pageType === win.mode) ?? null;
+  }
+
+  windowTitle(win: DockWindow): string {
+    if (!win.record) return 'new';
+    return win.record;
+  }
+
+  windowInputs(win: DockWindow): Record<string, unknown> {
+    return {
+      id: this.windowLayout(win)?.id ?? '',
+      embedded: true,
+      rowKey: win.record,
+      onRecordKey: (id: string) => this.retargetWindow(win.key, id),
+      onClosed: () => this.closeWindow(win.key),
+    };
+  }
+
+  focusWindow(key: string): void {
+    this.activeKey.set(key);
+  }
+
+  minimize(key: string): void {
+    this.windows.update((list) => list.map((win) => (win.key === key ? { ...win, minimized: true } : win)));
+  }
+
+  restore(key: string): void {
+    this.windows.update((list) => list.map((win) => (win.key === key ? { ...win, minimized: false } : win)));
+    this.activeKey.set(key);
+    queueMicrotask(() => window.dispatchEvent(new Event('resize')));
+  }
+
+  closeWindow(key: string): void {
+    this.windows.update((list) => list.filter((win) => win.key !== key));
+    if (this.activeKey() === key) this.activeKey.set(this.openWindows().at(-1)?.key ?? '');
   }
 
   @HostListener('document:keydown.escape')
   closeSideOnEscape(): void {
-    if (!this.embedded() && this.sideLayout()) this.closeSide();
-  }
-
-  openParams(kind: string, id: string): Record<string, string | null> {
-    const clear = { side: null, row: null, record: null };
-    if (kind === 'view') return { ...clear, viewId: id, modId: null };
-    return { ...clear, modId: id, viewId: null };
+    if (this.embedded()) return;
+    const open = this.openWindows();
+    const active = open.find((win) => win.key === this.activeKey()) ?? open.at(-1);
+    if (active) this.closeWindow(active.key);
   }
 
   applyFilters(): void {
@@ -675,10 +722,14 @@ export class LayoutPlayComponent {
       const nextId = this.savedId(saved);
       if (!id && nextId) {
         this.recordKey.set(nextId);
-        void this.router.navigate([], {
-          queryParams: { modId: nextId, viewId: null, side: null, row: null, record: null },
-          queryParamsHandling: 'merge',
-        });
+        const tell = this.onRecordKey();
+        if (tell) tell(nextId);
+        else {
+          void this.router.navigate([], {
+            queryParams: { modId: nextId, viewId: null, side: null, row: null, record: null },
+            queryParamsHandling: 'merge',
+          });
+        }
       } else if (id) {
         this.record.reload();
       }
@@ -699,10 +750,14 @@ export class LayoutPlayComponent {
       await firstValueFrom(this.http.delete(this.recordUrl(id), { responseType: 'text' }));
       listRevision.update((value) => value + 1);
       this.deleteAsk.set(false);
-      void this.router.navigate([], {
-        queryParams: { viewId: null, modId: null, side: null, row: null, record: null },
-        queryParamsHandling: 'merge',
-      });
+      const tell = this.onClosed();
+      if (tell) tell();
+      else {
+        void this.router.navigate([], {
+          queryParams: { viewId: null, modId: null, side: null, row: null, record: null },
+          queryParamsHandling: 'merge',
+        });
+      }
     } catch {
       this.saveError.set("Can't delete the record.");
     } finally {
@@ -737,6 +792,27 @@ export class LayoutPlayComponent {
 
   relationMarks(value: unknown): { token: string; name: string; letter: string }[] {
     return splitCsv(value).map((token) => ({ token, ...relationMark(token) }));
+  }
+
+  private consumeRouteWindow(viewId: string, hasMod: boolean, modId: string): void {
+    if (viewId) this.openWindow('view', viewId);
+    if (hasMod) {
+      if (!modId) this.openWindow('edit', '');
+      else {
+        const draft = this.windows().find((win) => win.mode === 'edit' && win.record === '');
+        if (draft) this.retargetWindow(draft.key, modId);
+        else this.openWindow('edit', modId);
+      }
+    }
+    void this.router.navigate([], {
+      queryParams: { viewId: null, modId: null, side: null, row: null, record: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  private retargetWindow(key: string, record: string): void {
+    this.windows.update((list) => list.map((win) => (win.key === key ? { ...win, record } : win)));
   }
 
   private routeRecord(): string {

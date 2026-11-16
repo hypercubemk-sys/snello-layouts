@@ -19,9 +19,9 @@
     </div>
     <div class="icon-row">
       @if (layout()?.pageType === 'list' && createLayout(); as edit) {
-        <a class="icon-btn btn-primary" [routerLink]="[]" [queryParams]="openParams('edit', '')" queryParamsHandling="merge" aria-label="New record" title="New record">
+        <button type="button" class="icon-btn btn-primary" aria-label="New record" title="New record" (click)="openWindow('edit', '')">
           <app-icon name="plus" />
-        </a>
+        </button>
       }
       @if (openedAt() !== '/data') {
         <a class="icon-btn" [routerLink]="['/layouts', layout()?.id]" aria-label="Edit layout" title="Edit layout"><app-icon name="pencil" /></a>
@@ -143,15 +143,14 @@
                     <td class="ops">
                       <div class="icon-row">
                         @for (operation of operations(); track operation.id) {
-                          <a
+                          <button
+                            type="button"
                             class="icon-btn"
-                            [routerLink]="[]"
-                            [queryParams]="openParams(operation.pageType, recordId(row))"
-                            queryParamsHandling="merge"
                             [attr.aria-label]="operation.name"
-                            [attr.title]="operation.name">
+                            [attr.title]="operation.name"
+                            (click)="openWindow(operation.pageType, recordId(row))">
                             <app-icon [name]="operationIcon(operation.pageType)" />
-                          </a>
+                          </button>
                         }
                       </div>
                     </td>
@@ -175,26 +174,57 @@
         currentPageReportTemplate="{first}–{last} of {totalRecords}"
         (onPageChange)="changePage($event)" />
     </section>
-    @if (sideLayout(); as side) {
-      <div class="drawer-back" (click)="closeSide()">
-        <section class="drawer" role="dialog" aria-modal="true" [attr.aria-label]="side.name" (click)="$event.stopPropagation()">
-          <header class="drawer-head">
-            <div>
-              <p class="kicker with-icon">
-                <app-meta-icon [icon]="metadatas.icon(side.metadataName)" [label]="side.metadataName" />
-                <span>{{ side.metadataName }} · {{ sideRecord() ? side.pageType : 'new' }}</span>
-              </p>
-              <h2>{{ side.name }}</h2>
-            </div>
-            <button type="button" class="icon-btn" aria-label="Close" title="Close" (click)="closeSide()">
-              <app-icon name="close" />
-            </button>
-          </header>
-          <div class="drawer-body">
-            <ng-container [ngComponentOutlet]="entryOutlet" [ngComponentOutletInputs]="sideInputs()" />
-          </div>
-        </section>
+    @if (windows().length) {
+      <div class="window-row" [class.has-dock]="minimizedWindows().length">
+        @for (win of windows(); track win.key) {
+          @if (windowLayout(win); as side) {
+            <section
+              class="drawer window"
+              role="dialog"
+              [hidden]="win.minimized"
+              [class.is-active]="activeKey() === win.key"
+              [attr.aria-label]="windowTitle(win)"
+              (pointerdown)="focusWindow(win.key)">
+              <header class="drawer-head">
+                <div>
+                  <p class="kicker with-icon">
+                    <app-meta-icon [icon]="metadatas.icon(side.metadataName)" [label]="side.metadataName" />
+                    <span>{{ side.metadataName }} · {{ win.record ? side.pageType : 'new' }}</span>
+                  </p>
+                  <h2>{{ side.name }}</h2>
+                </div>
+                <div class="icon-row">
+                  <button type="button" class="icon-btn" aria-label="Minimize" title="Minimize" (click)="minimize(win.key)">
+                    <app-icon name="minus" />
+                  </button>
+                  <button type="button" class="icon-btn" aria-label="Close" title="Close" (click)="closeWindow(win.key)">
+                    <app-icon name="close" />
+                  </button>
+                </div>
+              </header>
+              <div class="drawer-body">
+                <ng-container [ngComponentOutlet]="entryOutlet" [ngComponentOutletInputs]="windowInputs(win)" />
+              </div>
+            </section>
+          }
+        }
       </div>
+      @if (minimizedWindows().length) {
+        <div class="window-dock">
+          @for (win of minimizedWindows(); track win.key) {
+            <div class="window-chip">
+              <span class="window-mark" [attr.title]="win.mode === 'view' ? 'View' : 'Edit'" [attr.aria-label]="win.mode === 'view' ? 'View' : 'Edit'">{{ win.mode === 'view' ? 'V' : 'E' }}</span>
+              <span class="window-chip-name">{{ windowTitle(win) }}</span>
+              <button type="button" class="icon-btn" aria-label="Maximize" title="Maximize" (click)="restore(win.key)">
+                <app-icon name="maximize" />
+              </button>
+              <button type="button" class="icon-btn" aria-label="Close" title="Close" (click)="closeWindow(win.key)">
+                <app-icon name="close" />
+              </button>
+            </div>
+          }
+        </div>
+      }
     }
   } @else {
     <section class="wizard">

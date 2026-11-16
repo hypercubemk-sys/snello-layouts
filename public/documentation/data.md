@@ -17,7 +17,7 @@ Press Enter or the check button to apply. The panel closes and a chip shows the 
 
 Click anywhere on the card. The page title is the layout name. The line above it is the metadata and the page type.
 
-The plus button starts a new record when this metadata has an edit layout. It opens on the side. The close icon, or a click outside the panel, returns to the list.
+The plus button starts a new record when this metadata has an edit layout. It opens in a window.
 
 ## Search the records
 
@@ -37,7 +37,7 @@ The bar under the table moves between pages and changes how many rows are shown.
 
 ## Open a record
 
-The icons on a row open the view or edit layout of the same metadata, in a side panel. The eye opens the view. The pencil opens the edit. A metadata without those layouts has no row icons.
+The icons on a row open the view or edit layout of the same metadata, in a window. The eye opens the view. The pencil opens the edit. Several windows can stay open together, side by side. Minimize sends a window to the bar at the bottom. The bar shows an E or V mark, the record name or key, a maximize icon, and a close icon. A metadata without those layouts has no row icons.
 
 A view shows the values. An edit shows the form defined in the layout.
 

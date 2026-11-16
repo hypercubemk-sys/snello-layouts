@@ -20,6 +20,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         @case ('up') { <path d="M8 12V4M8 4 4.5 7.5M8 4l3.5 3.5" /> }
         @case ('down') { <path d="M8 4v8M8 12 4.5 8.5M8 12l3.5-3.5" /> }
         @case ('minus') { <path d="M3.5 8h9" /> }
+        @case ('maximize') { <path d="M3.2 3.2h9.6v9.6H3.2z" /> }
         @case ('close') { <path d="M4 4l8 8M12 4 4 12" /> }
         @case ('search') { <circle cx="7" cy="7" r="3.2" /><path d="M9.4 9.4 12.5 12.5" /> }
         @case ('code') { <path d="M6 4.5 2.5 8 6 11.5M10 4.5 13.5 8 10 11.5" /> }

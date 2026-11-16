@@ -912,26 +912,87 @@ a.icon-btn {
 .draft p-checkbox { width: auto; }
 .draft span { font-size: 13px; font-weight: 500; }
 .drafts .muted { margin-top: 4px; }
-.drawer-back {
+.window-row {
   position: fixed;
-  top: var(--topbar);
-  right: 0;
-  bottom: 0;
-  left: 0;
   z-index: 45;
+  top: var(--topbar);
+  right: 12px;
+  bottom: 0;
+  left: 12px;
   display: flex;
   justify-content: flex-end;
-  background: rgba(23, 23, 23, 0.32);
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px 0;
+  pointer-events: none;
 }
+.window-row.has-dock { bottom: 52px; }
+.window[hidden] { display: none !important; }
+.window.is-active { box-shadow: -8px 8px 32px rgba(0, 0, 0, 0.16); }
+.window-dock {
+  position: fixed;
+  z-index: 46;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #fff;
+  border-top: 1px solid var(--line);
+  overflow-x: auto;
+}
+.window-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 320px;
+  height: 36px;
+  padding: 0 4px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fafafa;
+}
+.window-mark {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+.window-chip-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+app-layout-play.with-dock { padding-bottom: 60px; }
 .drawer {
   width: min(720px, 100%);
   height: 100%;
   display: flex;
   flex-direction: column;
   background: #fff;
-  border-left: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-radius: 12px;
   box-shadow: -16px 0 40px rgba(0, 0, 0, 0.08);
+  pointer-events: auto;
   animation: drawer-in 180ms ease-out;
+}
+.window {
+  flex: 1 1 420px;
+  width: auto;
+  min-width: 0;
+  max-width: 720px;
 }
 .drawer-head {
   display: flex;
