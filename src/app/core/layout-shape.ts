@@ -28,11 +28,11 @@ export function seedWizard(fields: FieldDefinition[]): WizardLayoutBody {
     pages: [
       {
         id: crypto.randomUUID(),
-        title: 'Pagina 1',
+        title: 'Page 1',
         boxes: [
           {
             id: crypto.randomUUID(),
-            title: 'Dettaglio',
+            title: 'Details',
             fields: fields
               .filter((field) => !!field.name)
               .map((field) => ({
@@ -66,10 +66,10 @@ const NUMBER_SEARCH = new Set(['number', 'decimal']);
 
 export const SEARCH_LABEL: Record<SearchMode, string> = {
   like: 'Like',
-  eq: 'Uguale',
-  range: 'Intervallo',
-  boolean: 'Booleano',
-  none: 'Nessuna',
+  eq: 'Equals',
+  range: 'Range',
+  boolean: 'Boolean',
+  none: 'None',
 };
 
 export function defaultSearch(field: FieldDefinition): SearchMode {

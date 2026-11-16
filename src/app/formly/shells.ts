@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { FieldWrapper } from '@ngx-formly/core';
-import { fieldTypeIcon } from '../core/field-types';
+import { PanelModule } from '@openng/optimus-ui/panel';
+import { fieldTypeIcon, FIELD_TYPE_CATALOG } from '../core/field-types';
 import { Icon } from '../icon';
 
 @Component({
@@ -10,15 +11,14 @@ import { Icon } from '../icon';
   template: `
     <div class="field" [class.is-error]="showError">
       <div class="field-head">
+        @if (!search && typeLabel) {
+          <span class="type-badge" [attr.title]="typeTitle" [attr.aria-label]="typeTitle">
+            <app-icon [name]="typeIcon" />
+          </span>
+        }
         <label [attr.for]="id">{{ props.label }}</label>
         @if (props.required) {
           <em>*</em>
-        }
-        @if (!search && typeLabel) {
-          <span class="type-pill type-mark">
-            <app-icon [name]="typeIcon" />
-            {{ typeLabel }}
-          </span>
         }
       </div>
       <ng-container #fieldComponent></ng-container>
@@ -26,7 +26,7 @@ import { Icon } from '../icon';
         <p class="hint">{{ props.description }}</p>
       }
       @if (showError) {
-        <p class="error">Obbligatorio</p>
+        <p class="error">Required</p>
       }
     </div>
   `,
@@ -44,16 +44,24 @@ export class FieldShell extends FieldWrapper {
   get typeIcon(): string {
     return fieldTypeIcon(this.typeLabel);
   }
+
+  get typeTitle(): string {
+    return FIELD_TYPE_CATALOG.find((item) => item.id === this.typeLabel)?.label ?? this.typeLabel;
+  }
 }
 
 @Component({
   selector: 'app-box-shell',
+  imports: [PanelModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="box">
-      <header>{{ props.label }}</header>
+    <p-panel [header]="title" [toggleable]="true">
       <ng-container #fieldComponent></ng-container>
-    </section>
+    </p-panel>
   `,
 })
-export class BoxShell extends FieldWrapper {}
+export class BoxShell extends FieldWrapper {
+  get title(): string {
+    return this.props.label ?? '';
+  }
+}

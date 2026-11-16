@@ -53,9 +53,9 @@ function filterControlType(field: FieldDefinition): string {
 
 function searchTypeLabel(condition: string | null | undefined): string {
   if (condition === 'containss' || condition === 'like') return 'Like';
-  if (condition === 'gte' || condition === 'lte' || condition === 'range') return 'Intervallo';
-  if (condition === 'boolean') return 'Booleano';
-  return 'Uguale';
+  if (condition === 'gte' || condition === 'lte' || condition === 'range') return 'Range';
+  if (condition === 'boolean') return 'Boolean';
+  return 'Equals';
 }
 
 function fieldConfig(

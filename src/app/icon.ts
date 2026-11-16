@@ -8,9 +8,11 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
     <svg viewBox="0 0 16 16">
       @switch (name()) {
         @case ('plus') { <path d="M8 3v10M3 8h10" /> }
+        @case ('layers') { <path d="M8 2.2 13.2 5 8 7.8 2.8 5zM2.8 8 8 10.8 13.2 8M2.8 11 8 13.8 13.2 11" /> }
         @case ('pencil') { <path d="M9.5 3.5 12.5 6.5 6 13H3v-3z" /> }
         @case ('play') { <path d="M5 3.5v9l8-4.5z" /> }
         @case ('trash') { <path d="M3.5 4.5h9M6 4.5V3h4v1.5M5 4.5l.5 8h5l.5-8" /> }
+        @case ('clone') { <path d="M6 2.6h7.4v7.4H6z" /><path d="M2.6 6h7.4v7.4H2.6z" /> }
         @case ('check') { <path d="M3.5 8.5 6.5 11.5 12.5 4.5" /> }
         @case ('back') { <path d="M10 3.5 5 8l5 4.5M5 8h8" /> }
         @case ('forward') { <path d="M6 3.5 11 8l-5 4.5M3 8h8" /> }

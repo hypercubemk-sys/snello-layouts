@@ -4,15 +4,12 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import Keycloak from 'keycloak-js';
 import { filter, map } from 'rxjs';
 import { LayoutStore } from './core/layout-store';
+import { Session } from './core/session';
 import { Icon } from './icon';
 
-interface SessionUser {
-  name: string;
-  initial: string;
-  username: string;
-  email: string;
-  realm: string;
-  client: string;
+interface Crumb {
+  label: string;
+  link?: string;
 }
 
 @Component({
@@ -25,6 +22,7 @@ export class App {
   private readonly keycloak = inject(Keycloak);
   private readonly router = inject(Router);
   private readonly store = inject(LayoutStore);
+  private readonly session = inject(Session);
   private readonly path = toSignal(
     this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -32,10 +30,10 @@ export class App {
     ),
     { initialValue: this.router.url.split('?')[0] },
   );
-  readonly crumbs = computed(() => this.trail(this.path() ?? '/layouts'));
+  readonly crumbs = computed(() => this.trail(this.path() ?? '/'));
   readonly menuOpen = signal(false);
   readonly userOpen = signal(false);
-  readonly profile = this.readProfile();
+  readonly profile = this.session.user;
 
   logout(): void {
     void this.keycloak.logout({ redirectUri: window.location.origin });
@@ -63,29 +61,20 @@ export class App {
     this.closeMenus();
   }
 
-  private trail(path: string): { label: string }[] {
-    if (path === '/' || path === '/layouts') return [{ label: 'Libreria' }];
-    if (path === '/layouts/new') return [{ label: 'Nuovo layout' }];
+  private trail(path: string): Crumb[] {
+    const home: Crumb = { label: 'Home', link: '/' };
+    if (path === '/' || path === '') return [{ label: 'Home' }];
+    const layouts: Crumb = { label: 'Layouts', link: '/layouts' };
+    const data: Crumb = { label: 'Data', link: '/data' };
+    if (path === '/layouts') return [home, { label: 'Layouts' }];
+    if (path === '/data') return [home, { label: 'Data' }];
+    if (path === '/layouts/new') return [home, layouts, { label: 'New layout' }];
     const editor = path.match(/^\/layouts\/([^/]+)$/);
-    if (editor) return [{ label: this.store.find(editor[1])?.name || 'Layout' }];
+    if (editor) return [home, layouts, { label: this.store.find(editor[1])?.name || 'Layout' }];
     const play = path.match(/^\/play\/([^/]+)$/);
-    if (play) return [{ label: this.store.find(play[1])?.name || 'Prova' }];
-    return [];
-  }
-
-  private readProfile(): SessionUser {
-    const parsed = this.keycloak.tokenParsed as
-      | { preferred_username?: string; name?: string; given_name?: string; email?: string; azp?: string }
-      | undefined;
-    const username = parsed?.preferred_username ?? '';
-    const name = parsed?.name || parsed?.given_name || username || 'Account';
-    return {
-      name,
-      initial: name.trim().charAt(0).toUpperCase() || 'A',
-      username,
-      email: parsed?.email ?? '',
-      realm: 'snello',
-      client: parsed?.azp || 'snello-admin',
-    };
+    if (play) return [home, layouts, { label: this.store.find(play[1])?.name || 'Play' }];
+    const opened = path.match(/^\/data\/([^/]+)$/);
+    if (opened) return [home, data, { label: this.store.find(opened[1])?.name || 'List' }];
+    return [home];
   }
 }

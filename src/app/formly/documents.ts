@@ -16,11 +16,11 @@ import { Icon } from '../icon';
     } @else {
       <input type="file" [id]="id" (change)="onFile($event)" [disabled]="!canUpload()" />
       @if (!canUpload()) {
-        <p class="hint">Il media si allega dopo aver scelto un record già salvato.</p>
+        <p class="hint">Attach the file after the record is saved.</p>
       }
     }
     @if (uuid()) {
-      <p><a [href]="download()" target="_blank" rel="noopener">Scarica {{ fileName() }}</a></p>
+      <p><a [href]="download()" target="_blank" rel="noopener">Download {{ fileName() }}</a></p>
     }
     @if (video()) {
       <video class="video" controls [src]="download()"></video>
@@ -84,7 +84,7 @@ export class MediaField extends FieldType<FieldTypeConfig> implements OnInit {
     const table = this.props['tableName'];
     const key = this.props['recordKey'];
     if (!table || !key) {
-      this.note.set('Il media si allega dopo aver scelto un record già salvato.');
+      this.note.set('Attach the file after the record is saved.');
       return;
     }
     const body = new FormData();
@@ -102,7 +102,7 @@ export class MediaField extends FieldType<FieldTypeConfig> implements OnInit {
         this.formControl.markAsDirty();
       }
     } catch {
-      this.note.set('Caricamento non riuscito.');
+      this.note.set('Upload failed.');
     } finally {
       this.busy.set(false);
     }
@@ -126,13 +126,13 @@ export class MediaField extends FieldType<FieldTypeConfig> implements OnInit {
     }
     @if (!props.readonly) {
       <div class="lookup-actions">
-        <button type="button" class="icon-btn btn-primary" aria-label="Scegli immagine" title="Scegli immagine" (click)="open.set(true)"><app-icon name="image" /></button>
-        <button type="button" class="icon-btn" aria-label="Carica JPG o PNG" title="Carica JPG o PNG" [disabled]="!canUpload() || busy()" (click)="file.click()"><app-icon name="upload" /></button>
-        <button type="button" class="icon-btn" aria-label="Togli" title="Togli" [disabled]="!uuid()" (click)="clear()"><app-icon name="minus" /></button>
+        <button type="button" class="icon-btn btn-primary" aria-label="Choose image" title="Choose image" (click)="open.set(true)"><app-icon name="image" /></button>
+        <button type="button" class="icon-btn" aria-label="Upload JPG or PNG" title="Upload JPG or PNG" [disabled]="!canUpload() || busy()" (click)="file.click()"><app-icon name="upload" /></button>
+        <button type="button" class="icon-btn" aria-label="Remove" title="Remove" [disabled]="!uuid()" (click)="clear()"><app-icon name="minus" /></button>
         <input #file hidden type="file" accept="image/jpeg,image/png" (change)="onFile($event)" />
       </div>
       @if (!canUpload()) {
-        <p class="hint">Il caricamento richiede un record già salvato. Puoi comunque scegliere un'immagine esistente.</p>
+        <p class="hint">Upload needs a saved record. You can still choose an existing image.</p>
       }
     }
     @if (note()) {
@@ -142,12 +142,12 @@ export class MediaField extends FieldType<FieldTypeConfig> implements OnInit {
       <div class="sheet-back" (click)="open.set(false)">
         <section class="sheet" (click)="$event.stopPropagation()">
           <header>
-            <strong>Immagini</strong>
-            <button type="button" class="icon-btn" aria-label="Chiudi" title="Chiudi" (click)="open.set(false)"><app-icon name="close" /></button>
+            <strong>Images</strong>
+            <button type="button" class="icon-btn" aria-label="Close" title="Close" (click)="open.set(false)"><app-icon name="close" /></button>
           </header>
-          <input placeholder="Nome file" [value]="search()" (input)="search.set($any($event.target).value)" />
+          <input placeholder="File name" [value]="search()" (input)="search.set($any($event.target).value)" />
           @if (gallery.isLoading()) {
-            <p class="hint">Carico le immagini…</p>
+            <p class="hint">Loading images…</p>
           }
           <div class="gallery">
             @for (item of images(); track item['uuid']) {
@@ -156,7 +156,7 @@ export class MediaField extends FieldType<FieldTypeConfig> implements OnInit {
                 <span>{{ nameOf(item) }}</span>
               </button>
             } @empty {
-              <p class="hint">Nessuna immagine.</p>
+              <p class="hint">No images.</p>
             }
           </div>
         </section>
@@ -224,7 +224,7 @@ export class ImageField extends FieldType<FieldTypeConfig> implements OnInit {
     input.value = '';
     if (!file) return;
     if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
-      this.note.set('Formato non supportato. Carica solo PNG o JPG.');
+      this.note.set('Unsupported format. Upload PNG or JPG only.');
       return;
     }
     void this.upload(file);
@@ -234,7 +234,7 @@ export class ImageField extends FieldType<FieldTypeConfig> implements OnInit {
     const table = this.props['tableName'];
     const key = this.props['recordKey'];
     if (!table || !key) {
-      this.note.set('Salva il record prima di allegare un’immagine.');
+      this.note.set('Save the record before attaching an image.');
       return;
     }
     const body = new FormData();
@@ -252,7 +252,7 @@ export class ImageField extends FieldType<FieldTypeConfig> implements OnInit {
         this.formControl.markAsDirty();
       }
     } catch {
-      this.note.set("Errore durante il caricamento dell'immagine.");
+      this.note.set('Image upload failed.');
     } finally {
       this.busy.set(false);
     }

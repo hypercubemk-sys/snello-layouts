@@ -1,0 +1,83 @@
+<section class="page-head">
+  <div>
+    <p class="kicker">api.sne.lol</p>
+    <h1>Data layouts</h1>
+  </div>
+</section>
+
+@if (layoutsError()) {
+  <p class="banner">{{ layoutsError() }}</p>
+}
+
+@if (!layoutsReady()) {
+  <p class="muted">Loading layouts…</p>
+} @else if (lists().length > 0) {
+  <section class="filters">
+    <div class="section-title">
+      <h2>Filters</h2>
+      <button type="button" class="icon-btn" [attr.aria-label]="filtersOpen() ? 'Close filters' : 'Open filters'" [attr.title]="filtersOpen() ? 'Close filters' : 'Open filters'" (click)="filtersOpen.set(!filtersOpen())">
+        <app-icon name="filter" />
+      </button>
+    </div>
+    @if (!filtersOpen() && appliedMetadata()) {
+      <ul class="applied">
+        <li><span>Metadata</span><strong>{{ metadataLabel(appliedMetadata()) }}</strong></li>
+      </ul>
+    }
+    @if (filtersOpen()) {
+      <form class="library-filters" (submit)="applyFilters($event)">
+        <label>
+          Metadata
+          <select [value]="draftMetadata()" (change)="draftMetadata.set($any($event.target).value)">
+            <option value="">All</option>
+            @for (item of usedMetadata(); track item.value) {
+              <option [value]="item.value" [selected]="item.value === draftMetadata()">{{ item.label }}</option>
+            }
+          </select>
+        </label>
+        <div class="row-actions">
+          <button type="submit" class="icon-btn btn-primary" aria-label="Apply" title="Apply"><app-icon name="check" /></button>
+          <button type="button" class="icon-btn" aria-label="Clear" title="Clear" (click)="clearFilters()"><app-icon name="close" /></button>
+        </div>
+      </form>
+    }
+  </section>
+}
+
+@if (layoutsReady() && lists().length === 0) {
+  <section class="empty">
+    <h2>No list layouts</h2>
+  </section>
+} @else if (layoutsReady() && visible().length === 0) {
+  <section class="empty">
+    <h2>No matching layouts</h2>
+  </section>
+} @else if (layoutsReady()) {
+  <section class="card-page">
+    <div class="cards">
+      @for (layout of pageItems(); track layout.id) {
+        <article class="card">
+          <p class="card-title">
+            <app-meta-icon [icon]="metadatas.icon(layout.metadataName)" [label]="layout.metadataName" />
+            <span class="card-name">{{ layout.name }}</span>
+            <span class="page-mark" title="List" aria-label="List">L</span>
+          </p>
+          <div class="card-foot">
+            <time [attr.datetime]="layout.updatedAt">{{ layout.updatedAt | date: 'dd/MM/yy' }}</time>
+            <a class="icon-btn btn-primary" [routerLink]="['/data', layout.id]" aria-label="Open list" title="Open list">
+              <app-icon name="list" />
+            </a>
+          </div>
+        </article>
+      }
+    </div>
+    <p-paginator
+      [first]="pageStart()"
+      [rows]="pageSize()"
+      [totalRecords]="visible().length"
+      [rowsPerPageOptions]="pageSizes"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="{first}–{last} of {totalRecords}"
+      (onPageChange)="changePage($event)" />
+  </section>
+}

@@ -1,7 +1,11 @@
-@if (!layout()) {
+@if (!layoutsReady()) {
+  <p class="muted">Loading the layout…</p>
+} @else if (layoutsError() && !layout()) {
+  <p class="banner">{{ layoutsError() }}</p>
+} @else if (!layout()) {
   <section class="empty">
-    <h1>Layout non trovato</h1>
-    <a class="icon-btn btn-primary" routerLink="/layouts" aria-label="Torna alla libreria" title="Torna alla libreria"><app-icon name="back" /></a>
+    <h1>Layout not found</h1>
+    <a class="icon-btn btn-primary" [routerLink]="openedAt() === '/data' ? '/data' : '/layouts'" aria-label="Back" title="Back"><app-icon name="back" /></a>
   </section>
 } @else {
   @if (!embedded()) {
@@ -15,11 +19,11 @@
     </div>
     <div class="icon-row">
       @if (layout()?.pageType === 'list' && createLayout(); as edit) {
-        <a class="icon-btn btn-primary" [routerLink]="[]" [queryParams]="{ side: edit.id, row: null }" queryParamsHandling="merge" aria-label="Nuovo contenuto" title="Nuovo contenuto">
+        <a class="icon-btn btn-primary" [routerLink]="[]" [queryParams]="openParams('edit', '')" queryParamsHandling="merge" aria-label="New record" title="New record">
           <app-icon name="plus" />
         </a>
       }
-      <a class="icon-btn" [routerLink]="['/layouts', layout()?.id]" aria-label="Modifica layout" title="Modifica layout"><app-icon name="pencil" /></a>
+      <a class="icon-btn" [routerLink]="['/layouts', layout()?.id]" aria-label="Edit layout" title="Edit layout"><app-icon name="pencil" /></a>
     </div>
   </section>
   }
@@ -27,20 +31,20 @@
   @if (layout()?.pageType === 'list' && layout()?.body?.kind === 'list') {
     <section class="filters">
       <div class="section-title">
-        <h2>Filtri</h2>
+        <h2>Filters</h2>
         <div class="icon-row">
-          <button type="button" class="icon-btn" [attr.aria-label]="filtersOpen() ? 'Chiudi filtri' : 'Apri filtri'" [attr.title]="filtersOpen() ? 'Chiudi filtri' : 'Apri filtri'" (click)="filtersOpen.set(!filtersOpen())">
+          <button type="button" class="icon-btn" [attr.aria-label]="filtersOpen() ? 'Close filters' : 'Open filters'" [attr.title]="filtersOpen() ? 'Close filters' : 'Open filters'" (click)="filtersOpen.set(!filtersOpen())">
             <app-icon name="filter" />
           </button>
           <div class="tool-pop">
-            <button type="button" class="icon-btn columns-toggle" aria-label="Campi visibili" title="Campi visibili" [attr.aria-expanded]="columnsOpen()" (click)="toggleColumns()">
+            <button type="button" class="icon-btn columns-toggle" aria-label="Visible fields" title="Visible fields" [attr.aria-expanded]="columnsOpen()" (click)="toggleColumns()">
               <app-icon name="sliders" />
             </button>
             @if (columnsOpen()) {
               <div class="column-pop">
                 <div class="icon-row">
-                  <button type="button" class="text-btn" (click)="selectAllColumns()">Scegli tutto</button>
-                  <button type="button" class="text-btn" (click)="clearColumns()">Rimuovi tutto</button>
+                  <button type="button" class="text-btn" (click)="selectAllColumns()">Select all</button>
+                  <button type="button" class="text-btn" (click)="clearColumns()">Clear all</button>
                 </div>
                 <ul>
                   @for (column of columnChoices(); track column.fieldName) {
@@ -66,13 +70,13 @@
       }
       @if (filtersOpen()) {
         @if (filterFields().length === 0) {
-          <p class="muted">Questo metadato non ha campi filtrabili.</p>
+          <p class="muted">This metadata has no filterable fields.</p>
         } @else {
           <form [formGroup]="filterForm()" (ngSubmit)="applyFilters()">
             <formly-form class="filter-grid" [form]="filterForm()" [fields]="filterFields()" [model]="filterModel" />
             <div class="row-actions">
-              <button type="submit" class="icon-btn btn-primary" aria-label="Applica" title="Applica"><app-icon name="check" /></button>
-              <button type="button" class="icon-btn" aria-label="Azzera" title="Azzera" (click)="clearFilters()"><app-icon name="close" /></button>
+              <button type="submit" class="icon-btn btn-primary" aria-label="Apply" title="Apply"><app-icon name="check" /></button>
+              <button type="button" class="icon-btn" aria-label="Clear" title="Clear" (click)="clearFilters()"><app-icon name="close" /></button>
             </div>
           </form>
         }
@@ -80,14 +84,13 @@
     </section>
 
     <section class="table-wrap">
-      <div class="section-title">
-        <h2>{{ total() }} record</h2>
-        @if (rows.isLoading()) {
-          <p class="muted">Carico la lista…</p>
-        }
-      </div>
+      @if (rows.isLoading()) {
+        <div class="section-title">
+          <p class="muted">Loading the list…</p>
+        </div>
+      }
       @if (rows.status() === 'error') {
-        <p class="banner">La lista non è disponibile.</p>
+        <p class="banner">The list is unavailable.</p>
       } @else {
         <div class="table-scroll">
           <table class="data">
@@ -104,7 +107,7 @@
                   </th>
                 }
                 @if (operations().length) {
-                  <th class="ops">Operazioni</th>
+                  <th class="ops">Actions</th>
                 }
               </tr>
             </thead>
@@ -139,7 +142,7 @@
                           <a
                             class="icon-btn"
                             [routerLink]="[]"
-                            [queryParams]="{ side: operation.id, row: recordId(row) }"
+                            [queryParams]="openParams(operation.pageType, recordId(row))"
                             queryParamsHandling="merge"
                             [attr.aria-label]="operation.name"
                             [attr.title]="operation.name">
@@ -152,7 +155,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td [attr.colspan]="columns().length + (operations().length ? 1 : 0) || 1">Nessun record</td>
+                  <td [attr.colspan]="columns().length + (operations().length ? 1 : 0) || 1">No records</td>
                 </tr>
               }
             </tbody>
@@ -165,7 +168,7 @@
         [totalRecords]="total()"
         [rowsPerPageOptions]="pageSizes"
         [showCurrentPageReport]="true"
-        currentPageReportTemplate="{first}–{last} di {totalRecords}"
+        currentPageReportTemplate="{first}–{last} of {totalRecords}"
         (onPageChange)="changePage($event)" />
     </section>
     @if (sideLayout(); as side) {
@@ -175,11 +178,11 @@
             <div>
               <p class="kicker with-icon">
                 <app-meta-icon [icon]="metadatas.icon(side.metadataName)" [label]="side.metadataName" />
-                <span>{{ side.metadataName }} · {{ sideRecord() ? side.pageType : 'nuovo' }}</span>
+                <span>{{ side.metadataName }} · {{ sideRecord() ? side.pageType : 'new' }}</span>
               </p>
               <h2>{{ side.name }}</h2>
             </div>
-            <button type="button" class="icon-btn" aria-label="Chiudi" title="Chiudi" (click)="closeSide()">
+            <button type="button" class="icon-btn" aria-label="Close" title="Close" (click)="closeSide()">
               <app-icon name="close" />
             </button>
           </header>
@@ -192,20 +195,20 @@
   } @else {
     <section class="wizard">
       @if (recordKey() && record.isLoading()) {
-        <p class="muted">Carico il record…</p>
+        <p class="muted">Loading the record…</p>
       }
       <div class="stepper">
-        <span>Passo {{ step() + 1 }} di {{ pageCount() }}</span>
+        <span>Step {{ step() + 1 }} of {{ pageCount() }}</span>
         <strong>{{ pageTitle() }}</strong>
       </div>
       <form [formGroup]="entryForm()" (ngSubmit)="submit()">
         <formly-form [form]="entryForm()" [fields]="entryFields()" [model]="model" />
         <div class="row-actions">
-          <button type="button" class="icon-btn" aria-label="Indietro" title="Indietro" (click)="previousStep()" [disabled]="step() === 0"><app-icon name="back" /></button>
+          <button type="button" class="icon-btn" aria-label="Back" title="Back" (click)="previousStep()" [disabled]="step() === 0"><app-icon name="back" /></button>
           @if (step() < pageCount() - 1) {
-            <button type="button" class="icon-btn btn-primary" aria-label="Avanti" title="Avanti" (click)="nextStep()"><app-icon name="forward" /></button>
+            <button type="button" class="icon-btn btn-primary" aria-label="Next" title="Next" (click)="nextStep()"><app-icon name="forward" /></button>
           } @else if (layout()?.pageType === 'edit') {
-            <button type="submit" class="icon-btn btn-primary" aria-label="Leggi il payload" title="Leggi il payload"><app-icon name="code" /></button>
+            <button type="submit" class="icon-btn btn-primary" aria-label="Read the payload" title="Read the payload"><app-icon name="code" /></button>
           }
         </div>
       </form>

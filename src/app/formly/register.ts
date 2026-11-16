@@ -54,5 +54,5 @@ export const formlyConfig: ConfigOption = {
     { name: 'gmaplocation', component: LocationField },
     { name: 'gmappath', component: PathField },
   ],
-  validationMessages: [{ name: 'required', message: 'Obbligatorio' }],
+  validationMessages: [{ name: 'required', message: 'Required' }],
 };

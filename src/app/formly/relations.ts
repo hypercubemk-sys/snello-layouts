@@ -21,20 +21,20 @@ import { MetaIcon } from '../meta-icon';
         <input
           [id]="id"
           [value]="draft() ?? currentLabel()"
-          placeholder="Cerca e scegli"
+          placeholder="Search and choose"
           (focus)="open.set(true)"
           (input)="type($any($event.target).value)"
           (blur)="open.set(false)" />
         @if (open()) {
           <ul (mousedown)="$event.preventDefault()">
             @if (suggestions.isLoading()) {
-              <li class="hint">Carico…</li>
+              <li class="hint">Loading…</li>
             }
             @for (option of suggestionOptions(); track option.value) {
               <li><button type="button" (click)="pick(option)">{{ option.label }}</button></li>
             } @empty {
               @if (!suggestions.isLoading()) {
-                <li class="hint">Nessun valore</li>
+                <li class="hint">No value</li>
               }
             }
           </ul>
@@ -142,26 +142,26 @@ export class JoinField extends FieldType<FieldTypeConfig> implements OnInit {
   imports: [FormlyModule, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <p class="readonly">{{ currentLabel() || selectedId() || 'Nessun valore' }}</p>
+    <p class="readonly">{{ currentLabel() || selectedId() || 'No value' }}</p>
     @if (!props.readonly) {
       <div class="lookup-actions">
-        <button type="button" class="icon-btn btn-primary" aria-label="Seleziona" title="Seleziona" (click)="open.set(true)"><app-icon name="search" /></button>
-        <button type="button" class="icon-btn" aria-label="Svuota" title="Svuota" [disabled]="!selectedId()" (click)="clear()"><app-icon name="close" /></button>
+        <button type="button" class="icon-btn btn-primary" aria-label="Select" title="Select" (click)="open.set(true)"><app-icon name="search" /></button>
+        <button type="button" class="icon-btn" aria-label="Clear" title="Clear" [disabled]="!selectedId()" (click)="clear()"><app-icon name="close" /></button>
       </div>
     }
     @if (open()) {
       <div class="sheet-back" (click)="open.set(false)">
         <section class="sheet" (click)="$event.stopPropagation()">
           <header>
-            <strong>Seleziona valore</strong>
-            <button type="button" class="icon-btn" aria-label="Chiudi" title="Chiudi" (click)="open.set(false)"><app-icon name="close" /></button>
+            <strong>Select value</strong>
+            <button type="button" class="icon-btn" aria-label="Close" title="Close" (click)="open.set(false)"><app-icon name="close" /></button>
           </header>
           <div class="lookup-actions">
-            <input placeholder="Cerca" [value]="query()" (input)="query.set($any($event.target).value)" (keydown.enter)="applyQuery(); $event.preventDefault()" />
-            <button type="button" class="icon-btn" aria-label="Cerca" title="Cerca" (click)="applyQuery()"><app-icon name="search" /></button>
+            <input placeholder="Search" [value]="query()" (input)="query.set($any($event.target).value)" (keydown.enter)="applyQuery(); $event.preventDefault()" />
+            <button type="button" class="icon-btn" aria-label="Search" title="Search" (click)="applyQuery()"><app-icon name="search" /></button>
           </div>
           @if (rows.isLoading()) {
-            <p class="hint">Carico i record…</p>
+            <p class="hint">Loading records…</p>
           }
           <div class="table-scroll">
             <table class="data">
@@ -173,7 +173,7 @@ export class JoinField extends FieldType<FieldTypeConfig> implements OnInit {
                     }
                   </tr>
                 } @empty {
-                  <tr><td>Nessun risultato.</td></tr>
+                  <tr><td>No results.</td></tr>
                 }
               </tbody>
             </table>
@@ -293,18 +293,18 @@ export class LookupField extends FieldType<FieldTypeConfig> implements OnInit {
           }
         </span>
       } @empty {
-        <em class="hint">Nessun valore</em>
+        <em class="hint">No value</em>
       }
     </div>
     @if (!props.readonly) {
       <div class="suggest">
-        <input placeholder="Cerca e aggiungi" [value]="draft()" (focus)="open.set(true)" (input)="type($any($event.target).value)" (blur)="open.set(false)" />
+        <input placeholder="Search and add" [value]="draft()" (focus)="open.set(true)" (input)="type($any($event.target).value)" (blur)="open.set(false)" />
         @if (open()) {
           <ul (mousedown)="$event.preventDefault()">
             @for (option of suggestionsOptions(); track option.value) {
               <li><button type="button" (click)="add(option)">{{ option.label }}</button></li>
             } @empty {
-              <li class="hint">Nessun valore</li>
+              <li class="hint">No value</li>
             }
           </ul>
         }
@@ -405,25 +405,25 @@ export class MultijoinField extends FieldType<FieldTypeConfig> implements OnInit
           }
         </span>
       } @empty {
-        <em class="hint">Nessun valore</em>
+        <em class="hint">No value</em>
       }
     </div>
     @if (!props.readonly) {
       <div class="lookup-actions">
-        <button type="button" class="icon-btn btn-primary" aria-label="Seleziona" title="Seleziona" (click)="begin()"><app-icon name="search" /></button>
-        <button type="button" class="icon-btn" aria-label="Svuota" title="Svuota" [disabled]="ids().length === 0" (click)="clear()"><app-icon name="close" /></button>
+        <button type="button" class="icon-btn btn-primary" aria-label="Select" title="Select" (click)="begin()"><app-icon name="search" /></button>
+        <button type="button" class="icon-btn" aria-label="Clear" title="Clear" [disabled]="ids().length === 0" (click)="clear()"><app-icon name="close" /></button>
       </div>
     }
     @if (open()) {
       <div class="sheet-back" (click)="open.set(false)">
         <section class="sheet" (click)="$event.stopPropagation()">
           <header>
-            <strong>Seleziona valori</strong>
-            <button type="button" class="icon-btn" aria-label="Chiudi" title="Chiudi" (click)="open.set(false)"><app-icon name="close" /></button>
+            <strong>Select values</strong>
+            <button type="button" class="icon-btn" aria-label="Close" title="Close" (click)="open.set(false)"><app-icon name="close" /></button>
           </header>
           <div class="lookup-actions">
-            <input placeholder="Cerca" [value]="query()" (input)="query.set($any($event.target).value)" (keydown.enter)="applied.set(query()); $event.preventDefault()" />
-            <button type="button" class="icon-btn" aria-label="Cerca" title="Cerca" (click)="applied.set(query())"><app-icon name="search" /></button>
+            <input placeholder="Search" [value]="query()" (input)="query.set($any($event.target).value)" (keydown.enter)="applied.set(query()); $event.preventDefault()" />
+            <button type="button" class="icon-btn" aria-label="Search" title="Search" (click)="applied.set(query())"><app-icon name="search" /></button>
           </div>
           <div class="table-scroll">
             <table class="data">
@@ -435,14 +435,14 @@ export class MultijoinField extends FieldType<FieldTypeConfig> implements OnInit
                     }
                   </tr>
                 } @empty {
-                  <tr><td>Nessun risultato.</td></tr>
+                  <tr><td>No results.</td></tr>
                 }
               </tbody>
             </table>
           </div>
           <div class="lookup-actions">
-            <button type="button" class="icon-btn btn-primary" aria-label="Conferma" title="Conferma" (click)="confirm()"><app-icon name="check" /></button>
-            <button type="button" class="icon-btn" aria-label="Annulla" title="Annulla" (click)="open.set(false)"><app-icon name="close" /></button>
+            <button type="button" class="icon-btn btn-primary" aria-label="Confirm" title="Confirm" (click)="confirm()"><app-icon name="check" /></button>
+            <button type="button" class="icon-btn" aria-label="Cancel" title="Cancel" (click)="open.set(false)"><app-icon name="close" /></button>
           </div>
         </section>
       </div>
@@ -552,43 +552,43 @@ export class MultilookupField extends FieldType<FieldTypeConfig> implements OnIn
         <span>
           <app-meta-icon [icon]="catalog.icon(mark(item).name)" [label]="mark(item).name" />
           @if (!props.readonly) {
-            <button type="button" [attr.aria-label]="'Togli ' + mark(item).name" [attr.title]="'Togli ' + mark(item).name" (click)="remove(item)">×</button>
+            <button type="button" [attr.aria-label]="'Remove ' + mark(item).name" [attr.title]="'Remove ' + mark(item).name" (click)="remove(item)">×</button>
           }
         </span>
       } @empty {
-        <em class="hint">Nessuna relazione</em>
+        <em class="hint">No relationship</em>
       }
     </div>
     @if (!props.readonly) {
-      <button type="button" class="icon-btn" aria-label="Aggiungi relazione" title="Aggiungi relazione" (click)="open.set(true)"><app-icon name="plus" /></button>
+      <button type="button" class="icon-btn" aria-label="Add relationship" title="Add relationship" (click)="open.set(true)"><app-icon name="plus" /></button>
     }
     @if (open()) {
       <div class="sheet-back" (click)="open.set(false)">
         <section class="sheet" (click)="$event.stopPropagation()">
           <header>
-            <strong>Seleziona relazione</strong>
-            <button type="button" class="icon-btn" aria-label="Chiudi" title="Chiudi" (click)="open.set(false)"><app-icon name="close" /></button>
+            <strong>Select relationship</strong>
+            <button type="button" class="icon-btn" aria-label="Close" title="Close" (click)="open.set(false)"><app-icon name="close" /></button>
           </header>
           <div class="meta-pick">
             @if (metadataName()) {
               <app-meta-icon [icon]="catalog.icon(metadataName())" [label]="metadataName()" />
             }
             <select [value]="metadataName()" (change)="metadataName.set($any($event.target).value)">
-              <option value="" [selected]="!metadataName()">Metadato</option>
+              <option value="" [selected]="!metadataName()">Metadata</option>
               @for (metadata of metadatas(); track metadata.uuid) {
                 <option [value]="metadata.table_name" [selected]="metadata.table_name === metadataName()">{{ metadata.description || metadata.table_name }}</option>
               }
             </select>
           </div>
-          <input placeholder="Filtra i record caricati" [value]="query()" (input)="query.set($any($event.target).value)" />
+          <input placeholder="Filter loaded records" [value]="query()" (input)="query.set($any($event.target).value)" />
           @if (rows.isLoading()) {
-            <p class="hint">Carico i record…</p>
+            <p class="hint">Loading records…</p>
           }
           <ul class="picker-list">
             @for (row of filtered(); track track(row)) {
               <li><button type="button" (click)="choose(row)">{{ rowLabel(row) }}</button></li>
             } @empty {
-              <li class="hint">Nessun record.</li>
+              <li class="hint">No records.</li>
             }
           </ul>
         </section>

@@ -1,22 +1,22 @@
 <section class="page-head">
   <div>
-    <p class="kicker">Configuratore</p>
-    <h1>{{ name() || 'Nuovo layout' }}</h1>
+    <p class="kicker">Builder</p>
+    <h1>{{ name() || 'New layout' }}</h1>
   </div>
   <div class="row-actions">
-    <a class="icon-btn" routerLink="/layouts" aria-label="Libreria" title="Libreria"><app-icon name="back" /></a>
+    <a class="icon-btn" routerLink="/layouts" aria-label="Library" title="Library"><app-icon name="back" /></a>
     @if (id()) {
-      <button type="button" class="icon-btn" aria-label="Salva" title="Salva" (click)="save(false)" [disabled]="!metadataName()">
+      <button type="button" class="icon-btn" aria-label="Save" title="Save" (click)="save(false)" [disabled]="!metadataName()">
         <app-icon name="check" />
       </button>
-      <button type="button" class="icon-btn btn-primary" aria-label="Salva e prova" title="Salva e prova" (click)="save(true)" [disabled]="!metadataName()">
+      <button type="button" class="icon-btn btn-primary" aria-label="Save and play" title="Save and play" (click)="save(true)" [disabled]="!metadataName()">
         <app-icon name="play" />
       </button>
     } @else {
-      <button type="button" class="icon-btn" aria-label="Crea" title="Crea" (click)="createDrafts(false)" [disabled]="!canCreate()">
+      <button type="button" class="icon-btn" aria-label="Create" title="Create" (click)="createDrafts(false)" [disabled]="!canCreate()">
         <app-icon name="check" />
       </button>
-      <button type="button" class="icon-btn btn-primary" aria-label="Crea e prova" title="Crea e prova" (click)="createDrafts(true)" [disabled]="!canCreate()">
+      <button type="button" class="icon-btn btn-primary" aria-label="Create and play" title="Create and play" (click)="createDrafts(true)" [disabled]="!canCreate()">
         <app-icon name="play" />
       </button>
     }
@@ -27,21 +27,21 @@
   <p class="banner">{{ loadError() }}</p>
 }
 @if (saved()) {
-  <p class="banner ok">Layout salvato in questo browser.</p>
+  <p class="banner ok">Layout saved.</p>
 }
 @if (metadatas.resource.status() === 'error') {
-  <p class="banner">Non riesco a leggere i metadati da api.sne.lol.</p>
+  <p class="banner">Can't read metadata from api.sne.lol.</p>
 }
 
 <section class="setup">
   <label>
-    Metadato
+    Metadata
     <span class="meta-pick">
       @if (metadataName()) {
         <app-meta-icon [icon]="metadatas.icon(metadataName())" [label]="metadataName()" />
       }
     <select #metadataSelect [value]="metadataName()" (change)="onMetadata(metadataSelect)">
-      <option value="" [selected]="!metadataName()">Scegli</option>
+      <option value="" [selected]="!metadataName()">Choose</option>
       @for (item of metadataOptions(); track item.uuid) {
         <option [value]="item.table_name" [selected]="item.table_name === metadataName()">{{ item.description || item.table_name }}</option>
       }
@@ -49,25 +49,25 @@
     </span>
   </label>
   @if (id()) {
-    <div class="segmented" role="group" aria-label="Tipo pagina">
-      <button type="button" aria-label="Lista" title="Lista" [class.on]="pageType() === 'list'" (click)="setPageType('list')"><app-icon name="list" /></button>
+    <div class="segmented" role="group" aria-label="Page type">
+      <button type="button" aria-label="List" title="List" [class.on]="pageType() === 'list'" (click)="setPageType('list')"><app-icon name="list" /></button>
       <button type="button" aria-label="Edit" title="Edit" [class.on]="pageType() === 'edit'" (click)="setPageType('edit')"><app-icon name="pencil" /></button>
       <button type="button" aria-label="View" title="View" [class.on]="pageType() === 'view'" (click)="setPageType('view')"><app-icon name="eye" /></button>
     </div>
     <label>
-      Nome
-      <input [value]="name()" (input)="onName($event)" placeholder="metadato edit" />
+      Name
+      <input [value]="name()" (input)="onName($event)" placeholder="metadata edit" />
     </label>
   }
 </section>
 
 @if (!metadataName()) {
   <section class="empty">
-    <h2>Scegli un metadato</h2>
-    <p>I field definition arrivano da https://api.sne.lol/api e diventano il materiale del layout.</p>
+    <h2>Choose a metadata</h2>
+    <p>Field definitions come from https://api.sne.lol/api and become the layout material.</p>
   </section>
 } @else if (fieldResource.isLoading()) {
-  <p class="muted">Carico i field definition…</p>
+  <p class="muted">Loading field definitions…</p>
 } @else if (!id()) {
   <section class="drafts">
     @for (draft of drafts(); track draft.kind) {
@@ -77,15 +77,15 @@
         <input [value]="draft.name" [disabled]="!draft.enabled" (input)="renameDraft(draft.kind, $event)" />
       </label>
     }
-    <p class="muted">{{ fields().length }} campi inclusi. Stringa e gli altri campi un terzo, il testo la riga intera.</p>
+    <p class="muted">{{ fields().length }} fields included. String and the other fields take a third of the row, text takes the full row.</p>
     @if (existingForMetadata().length) {
-      <p class="muted">Già salvati: {{ existingNames() }}</p>
+      <p class="muted">Already saved: {{ existingNames() }}</p>
     }
   </section>
 } @else {
   <div class="studio">
     <aside class="palette">
-      <h2>Campi</h2>
+      <h2>Fields</h2>
       <ul>
         @for (field of fields(); track field.uuid ?? field.name) {
           <li>
@@ -93,11 +93,10 @@
               type="button"
               [disabled]="pageType() !== 'list' && usedNames().has(field.name || '')"
               (click)="pageType() === 'list' ? toggleColumn(field.name || '') : addField(field.name || '')">
-              <strong>{{ field.label || field.name }}</strong>
-              <span class="type-mark">
+              <span class="type-badge" [attr.title]="typeTitle(field.name || '')" [attr.aria-label]="typeTitle(field.name || '')">
                 <app-icon [name]="typeIcon(field.name || '')" />
-                {{ typeOf(field.name || '') }}
               </span>
+              <strong>{{ field.label || field.name }}</strong>
             </button>
           </li>
         }
@@ -107,20 +106,19 @@
     <section class="canvas">
       @if (pageType() === 'list' && listBody()) {
         <div class="section-title">
-          <h2>Colonne</h2>
+          <h2>Columns</h2>
         </div>
-        <p class="muted">Stringa, testo e TinyMCE partono da like. La data da un intervallo, il booleano da sì/no, il numero da uguale. L’immagine non si cerca.</p>
+        <p class="muted">String, text, and TinyMCE start as like. Dates start as a range, booleans as yes/no, numbers as equals. Images are not searchable.</p>
         <ol class="columns">
           @for (column of columns(); track column.fieldName) {
             <li [class.off]="!column.visible">
               <label class="check">
                 <p-checkbox [binary]="true" [ngModel]="column.visible" [ngModelOptions]="{ standalone: true }" (ngModelChange)="toggleColumn(column.fieldName)" />
+                <span class="type-badge" [attr.title]="typeTitle(column.fieldName)" [attr.aria-label]="typeTitle(column.fieldName)">
+                  <app-icon [name]="typeIcon(column.fieldName)" />
+                </span>
                 <span>{{ fieldOf(column.fieldName)?.label || column.fieldName }}</span>
               </label>
-              <em class="type-mark">
-                <app-icon [name]="typeIcon(column.fieldName)" />
-                {{ typeOf(column.fieldName) }}
-              </em>
               @if (searchOptions(column.fieldName).length > 1) {
                 <select class="search-mode" [value]="searchOf(column.fieldName)" (change)="setSearch(column.fieldName, $event)">
                   @for (mode of searchOptions(column.fieldName); track mode) {
@@ -131,10 +129,10 @@
                 <em>{{ searchLabel(searchOf(column.fieldName)) }}</em>
               }
               <div class="icon-row">
-                <button type="button" class="icon-btn" aria-label="Sposta su" title="Sposta su" (click)="moveColumn(column.fieldName, -1)">
+                <button type="button" class="icon-btn" aria-label="Move up" title="Move up" (click)="moveColumn(column.fieldName, -1)">
                   <app-icon name="up" />
                 </button>
-                <button type="button" class="icon-btn" aria-label="Sposta giù" title="Sposta giù" (click)="moveColumn(column.fieldName, 1)">
+                <button type="button" class="icon-btn" aria-label="Move down" title="Move down" (click)="moveColumn(column.fieldName, 1)">
                   <app-icon name="down" />
                 </button>
               </div>
@@ -143,8 +141,8 @@
           </ol>
       } @else {
         <div class="section-title">
-          <h2>Pagine</h2>
-          <button type="button" class="icon-btn" aria-label="Aggiungi pagina" title="Aggiungi pagina" (click)="addPage()">
+          <h2>Pages</h2>
+          <button type="button" class="icon-btn" aria-label="Add page" title="Add page" (click)="addPage()">
             <app-icon name="plus" />
           </button>
         </div>
@@ -159,63 +157,64 @@
         @if (selectedPage(); as page) {
           <div class="page-tools">
             <input [value]="page.title" (input)="renamePage(page.id, $event)" />
-            <button type="button" class="icon-btn" aria-label="Elimina pagina" title="Elimina pagina" (click)="removePage(page.id)">
+            <button type="button" class="icon-btn" aria-label="Delete page" title="Delete page" (click)="removePage(page.id)">
               <app-icon name="trash" />
             </button>
-            <button type="button" class="icon-btn" aria-label="Aggiungi blocco" title="Aggiungi blocco" (click)="addBox()">
+            <button type="button" class="icon-btn" aria-label="Add block" title="Add block" (click)="addBox()">
               <app-icon name="plus" />
             </button>
           </div>
           @for (box of page.boxes; track box.id) {
-            <article class="box editor-box" [class.on]="selectedBoxId() === box.id" (click)="selectBox(box.id)">
-              <header>
-                <input [value]="box.title" (input)="renameBox(box.id, $event)" />
-                <button type="button" class="icon-btn" aria-label="Elimina blocco" title="Elimina blocco" (click)="removeBox(box.id)">
-                  <app-icon name="trash" />
-                </button>
-              </header>
+            <p-panel [styleClass]="selectedBoxId() === box.id ? 'editor-box on' : 'editor-box'" [toggleable]="true" (click)="selectBox(box.id)">
+              <ng-template #header>
+                <span class="editor-box-head">
+                  <input [value]="box.title" (input)="renameBox(box.id, $event)" />
+                  <button type="button" class="icon-btn" aria-label="Delete block" title="Delete block" (click)="removeBox(box.id)">
+                    <app-icon name="trash" />
+                  </button>
+                </span>
+              </ng-template>
               @if (box.fields.length === 0) {
-                <p class="muted">Clicca un campo a sinistra per metterlo in questo blocco.</p>
+                <p class="muted">Click a field on the left to place it in this block.</p>
               }
               <ol class="field-board">
                 @for (field of box.fields; track field.fieldName) {
                   <li class="field-card" [class.span-12]="field.span === 12" [class.span-6]="field.span === 6" [class.span-4]="field.span === 4">
-                    <div>
-                      <strong>{{ fieldOf(field.fieldName)?.label || field.fieldName }}</strong>
-                      <span class="type-pill type-mark">
+                    <div class="field-card-name">
+                      <span class="type-badge" [attr.title]="typeTitle(field.fieldName)" [attr.aria-label]="typeTitle(field.fieldName)">
                         <app-icon [name]="typeIcon(field.fieldName)" />
-                        {{ typeOf(field.fieldName) }}
                       </span>
+                      <strong>{{ fieldOf(field.fieldName)?.label || field.fieldName }}</strong>
                     </div>
                     <label class="check">
                       <p-checkbox [binary]="true" [ngModel]="field.required" [ngModelOptions]="{ standalone: true }" (ngModelChange)="toggleRequired(box.id, field.fieldName)" />
-                      <span>Obbligatorio</span>
+                      <span>Required</span>
                     </label>
-                    <select [value]="field.span" (change)="setSpan(box.id, field.fieldName, $event)">
-                      <option value="12">Intera</option>
-                      <option value="6">Metà</option>
-                      <option value="4">Terzo</option>
+                    <select class="span-select" [value]="field.span" (change)="setSpan(box.id, field.fieldName, $event)">
+                      <option value="12">Full</option>
+                      <option value="6">Half</option>
+                      <option value="4">Third</option>
                     </select>
                     <div class="card-actions icon-row">
-                      <button type="button" class="icon-btn" aria-label="Sposta su" title="Sposta su" (click)="moveField(box.id, field.fieldName, -1)">
+                      <button type="button" class="icon-btn" aria-label="Move up" title="Move up" (click)="moveField(box.id, field.fieldName, -1)">
                         <app-icon name="up" />
                       </button>
-                      <button type="button" class="icon-btn" aria-label="Sposta giù" title="Sposta giù" (click)="moveField(box.id, field.fieldName, 1)">
+                      <button type="button" class="icon-btn" aria-label="Move down" title="Move down" (click)="moveField(box.id, field.fieldName, 1)">
                         <app-icon name="down" />
                       </button>
-                      <button type="button" class="icon-btn" aria-label="Togli" title="Togli" (click)="removeField(box.id, field.fieldName)">
+                      <button type="button" class="icon-btn" aria-label="Remove" title="Remove" (click)="removeField(box.id, field.fieldName)">
                         <app-icon name="minus" />
                       </button>
                     </div>
                   </li>
                 }
               </ol>
-            </article>
+            </p-panel>
           }
         }
       }
 
-      <button type="button" class="icon-btn json-toggle" [attr.aria-label]="showJson() ? 'Nascondi JSON' : 'Mostra JSON'" [attr.title]="showJson() ? 'Nascondi JSON' : 'Mostra JSON'" (click)="showJson.set(!showJson())">
+      <button type="button" class="icon-btn json-toggle" [attr.aria-label]="showJson() ? 'Hide JSON' : 'Show JSON'" [attr.title]="showJson() ? 'Hide JSON' : 'Show JSON'" (click)="showJson.set(!showJson())">
         <app-icon name="code" />
       </button>
       @if (showJson()) {

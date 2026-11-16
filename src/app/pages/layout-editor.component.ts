@@ -3,7 +3,8 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, si
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CheckboxModule } from '@openng/optimus-ui/checkbox';
-import { defaultSpan, fieldTypeIcon, logicalFieldType } from '../core/field-types';
+import { PanelModule } from '@openng/optimus-ui/panel';
+import { defaultSpan, FIELD_TYPE_CATALOG, fieldTypeIcon, logicalFieldType } from '../core/field-types';
 import { orderedColumns, placementNames, resolvedSearch, searchChoices, SEARCH_LABEL, seedBody, withSearches } from '../core/layout-shape';
 import {
   FieldDefinition,
@@ -29,7 +30,7 @@ interface LayoutDraft {
 
 @Component({
   selector: 'app-layout-editor',
-  imports: [RouterLink, FormsModule, CheckboxModule, Icon, MetaIcon],
+  imports: [RouterLink, FormsModule, CheckboxModule, PanelModule, Icon, MetaIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './layout-editor.component.html',
 })
@@ -108,9 +109,11 @@ export class LayoutEditorComponent {
   constructor() {
     effect(() => {
       const routeId = this.id() ?? '';
+      const ready = this.store.ready();
       const presetMetadata = this.metadata();
       const presetPage = this.page();
       const status = this.metadatas.resource.status();
+      if (!ready) return;
       if (status === 'idle' || status === 'loading' || status === 'reloading') return;
       untracked(() => {
         if (this.boundRoute() === routeId) return;
@@ -119,7 +122,7 @@ export class LayoutEditorComponent {
         if (routeId) {
           const saved = this.store.find(routeId);
           if (!saved) {
-            this.loadError.set('Layout non trovato');
+            this.loadError.set('Layout not found');
             return;
           }
           this.hydrate(saved);
@@ -181,7 +184,7 @@ export class LayoutEditorComponent {
   onMetadata(select: HTMLSelectElement): void {
     const name = select.value;
     if (name === this.metadataName()) return;
-    if (this.metadataName() && placementNames(this.body()).length && !window.confirm('Cambiare metadato ricrea il layout. Continuare?')) {
+    if (this.metadataName() && placementNames(this.body()).length && !window.confirm('Changing metadata rebuilds the layout. Continue?')) {
       select.value = this.metadataName();
       return;
     }
@@ -197,7 +200,7 @@ export class LayoutEditorComponent {
   setPageType(kind: PageKind): void {
     if (kind === this.pageType()) return;
     const crossing = (kind === 'list') !== (this.pageType() === 'list');
-    if (crossing && this.metadataName() && !window.confirm('Cambiare tra lista e scheda ricrea il body. Continuare?')) return;
+    if (crossing && this.metadataName() && !window.confirm('Switching between list and form rebuilds the body. Continue?')) return;
     this.pageType.set(kind);
     this.saved.set(false);
     if (this.metadataName()) this.name.set(`${this.metadataName()} ${kind}`);
@@ -215,6 +218,11 @@ export class LayoutEditorComponent {
 
   typeIcon(name: string): string {
     return fieldTypeIcon(this.typeOf(name));
+  }
+
+  typeTitle(name: string): string {
+    const type = this.typeOf(name);
+    return FIELD_TYPE_CATALOG.find((item) => item.id === type)?.label ?? type;
   }
 
   searchOf(name: string): SearchMode {
@@ -276,8 +284,8 @@ export class LayoutEditorComponent {
   addPage(): void {
     const page: LayoutPage = {
       id: crypto.randomUUID(),
-      title: `Pagina ${(this.wizard()?.pages.length ?? 0) + 1}`,
-      boxes: [{ id: crypto.randomUUID(), title: 'Blocco', fields: [] }],
+      title: `Page ${(this.wizard()?.pages.length ?? 0) + 1}`,
+      boxes: [{ id: crypto.randomUUID(), title: 'Block', fields: [] }],
     };
     this.patchWizard((body) => body.pages.push(page));
     this.selectedPageId.set(page.id);
@@ -299,8 +307,8 @@ export class LayoutEditorComponent {
   }
 
   removePage(id: string): void {
-    const title = this.wizard()?.pages.find((page) => page.id === id)?.title || 'questa pagina';
-    if (!window.confirm(`Eliminare «${title}»?`)) return;
+    const title = this.wizard()?.pages.find((page) => page.id === id)?.title || 'this page';
+    if (!window.confirm(`Delete “${title}”?`)) return;
     this.patchWizard((body) => {
       body.pages = body.pages.filter((page) => page.id !== id);
     });
@@ -311,7 +319,7 @@ export class LayoutEditorComponent {
   addBox(): void {
     const pageId = this.selectedPage()?.id;
     if (!pageId) return;
-    const box: LayoutBox = { id: crypto.randomUUID(), title: 'Blocco', fields: [] };
+    const box: LayoutBox = { id: crypto.randomUUID(), title: 'Block', fields: [] };
     this.patchWizard((body) => {
       body.pages.find((page) => page.id === pageId)?.boxes.push(box);
     });
@@ -333,8 +341,8 @@ export class LayoutEditorComponent {
   }
 
   removeBox(id: string): void {
-    const title = this.wizard()?.pages.flatMap((page) => page.boxes).find((box) => box.id === id)?.title || 'questo blocco';
-    if (!window.confirm(`Eliminare «${title}»?`)) return;
+    const title = this.wizard()?.pages.flatMap((page) => page.boxes).find((box) => box.id === id)?.title || 'this block';
+    if (!window.confirm(`Delete “${title}”?`)) return;
     this.patchWizard((body) => {
       for (const page of body.pages) page.boxes = page.boxes.filter((box) => box.id !== id);
     });
@@ -405,7 +413,7 @@ export class LayoutEditorComponent {
   }
 
   draftLabel(kind: PageKind): string {
-    if (kind === 'list') return 'Lista';
+    if (kind === 'list') return 'List';
     if (kind === 'view') return 'View';
     return 'Edit';
   }
@@ -427,24 +435,17 @@ export class LayoutEditorComponent {
     const created: LayoutDocument[] = [];
     for (const draft of this.drafts()) {
       if (!draft.enabled) continue;
-      const document: LayoutDocument = {
+      created.push({
         id: crypto.randomUUID(),
-        name: draft.name.trim() || `${metadataName} ${draft.kind === 'list' ? 'lista' : draft.kind}`,
+        name: draft.name.trim() || `${metadataName} ${draft.kind === 'list' ? 'list' : draft.kind}`,
         metadataName,
         metadataUuid: metadata?.uuid ?? '',
         pageType: draft.kind,
         updatedAt: new Date().toISOString(),
         body: seedBody(draft.kind, fields),
-      };
-      this.store.save(document);
-      created.push(document);
+      });
     }
-    const target = created.find((item) => item.pageType === 'list') ?? created[0];
-    if (openPlay && target) {
-      void this.router.navigate(['/play', target.id]);
-      return;
-    }
-    void this.router.navigate(['/layouts']);
+    void this.persist(created, openPlay);
   }
 
   save(openPlay = false): void {
@@ -452,7 +453,7 @@ export class LayoutEditorComponent {
     if (!metadataName) return;
     const metadata = this.metadataOptions().find((item) => item.table_name === metadataName);
     const id = this.id() || crypto.randomUUID();
-    const document: LayoutDocument = {
+    void this.persist([{
       id,
       name: this.name().trim() || `${metadataName} ${this.pageType()}`,
       metadataName,
@@ -460,15 +461,30 @@ export class LayoutEditorComponent {
       pageType: this.pageType(),
       updatedAt: new Date().toISOString(),
       body: this.body(),
-    };
-    this.store.save(document);
-    this.saved.set(true);
-    this.boundRoute.set(id);
-    if (openPlay) {
-      void this.router.navigate(['/play', id]);
-      return;
+    }], openPlay);
+  }
+
+  private async persist(documents: LayoutDocument[], openPlay: boolean): Promise<void> {
+    this.loadError.set('');
+    try {
+      const saved: LayoutDocument[] = [];
+      for (const document of documents) saved.push(await this.store.save(document));
+      const target = saved.find((item) => item.pageType === 'list') ?? saved[0];
+      if (!target) return;
+      this.saved.set(true);
+      this.boundRoute.set(target.id);
+      if (openPlay) {
+        void this.router.navigate(['/play', target.id]);
+        return;
+      }
+      if (documents.length > 1) {
+        void this.router.navigate(['/layouts']);
+        return;
+      }
+      void this.router.navigate(['/layouts', target.id], { replaceUrl: true });
+    } catch {
+      this.loadError.set("Can't save the layout.");
     }
-    void this.router.navigate(['/layouts', id], { replaceUrl: true });
   }
 
   private hydrate(layout: LayoutDocument): void {
@@ -499,6 +515,6 @@ function freshDrafts(table: string, only?: PageKind): LayoutDraft[] {
   return kinds.map((kind) => ({
     kind,
     enabled: only ? kind === only : true,
-    name: table ? `${table} ${kind === 'list' ? 'lista' : kind}` : '',
+    name: table ? `${table} ${kind === 'list' ? 'list' : kind}` : '',
   }));
 }

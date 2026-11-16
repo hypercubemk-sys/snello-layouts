@@ -1,53 +1,122 @@
 <section class="page-head">
   <div>
     <p class="kicker">api.sne.lol</p>
-    <h1>Libreria layout</h1>
+    <h1>Layout library</h1>
   </div>
-  <a class="icon-btn btn-primary" routerLink="/layouts/new" aria-label="Crea layout" title="Crea layout">
-    <app-icon name="plus" />
-  </a>
+  <div class="icon-row">
+    <a class="icon-btn btn-primary" routerLink="/layouts/new" aria-label="Create layout" title="Create layout">
+      <app-icon name="plus" />
+    </a>
+    <button type="button" class="icon-btn btn-primary" aria-label="Create many layouts" title="Create many layouts" (click)="openBulk()">
+      <app-icon name="layers" />
+    </button>
+  </div>
 </section>
 
 @if (metadatas.resource.status() === 'error') {
-  <p class="banner">Non riesco a leggere i metadati da api.sne.lol.</p>
-} @else {
-  <p class="stat">{{ metadataCount() }} metadati disponibili sul sito di prova.</p>
+  <p class="banner">Can't read metadata from api.sne.lol.</p>
+}
+@if (layoutsError()) {
+  <p class="banner">{{ layoutsError() }}</p>
+}
+@if (writeError()) {
+  <p class="banner">{{ writeError() }}</p>
 }
 
-@if (layouts().length === 0) {
+<section class="filters">
+  <div class="section-title">
+    <h2>Filters</h2>
+    <button type="button" class="icon-btn" [attr.aria-label]="filtersOpen() ? 'Close filters' : 'Open filters'" [attr.title]="filtersOpen() ? 'Close filters' : 'Open filters'" (click)="filtersOpen.set(!filtersOpen())">
+      <app-icon name="filter" />
+    </button>
+  </div>
+  @if (!filtersOpen() && chips().length) {
+    <ul class="applied">
+      @for (item of chips(); track item.name) {
+        <li><span>{{ item.label }}</span><strong>{{ item.value }}</strong></li>
+      }
+    </ul>
+  }
+  @if (filtersOpen()) {
+    <form class="library-filters" (submit)="applyFilters($event)">
+      <label>
+        Name
+        <span class="search-input" title="Like">
+          <input [value]="draftName()" (input)="draftName.set($any($event.target).value)" />
+          <app-icon name="like" />
+        </span>
+      </label>
+      <label>
+        Metadata
+        <select [value]="draftMetadata()" (change)="draftMetadata.set($any($event.target).value)">
+          <option value="">All</option>
+          @for (item of usedMetadata(); track item.value) {
+            <option [value]="item.value" [selected]="item.value === draftMetadata()">{{ item.label }}</option>
+          }
+        </select>
+      </label>
+      <label>
+        Type
+        <select [value]="draftType()" (change)="draftType.set($any($event.target).value)">
+          <option value="">All</option>
+          <option value="list" [selected]="draftType() === 'list'">List</option>
+          <option value="edit" [selected]="draftType() === 'edit'">Edit</option>
+          <option value="view" [selected]="draftType() === 'view'">View</option>
+        </select>
+      </label>
+      <div class="row-actions">
+        <button type="submit" class="icon-btn btn-primary" aria-label="Apply" title="Apply"><app-icon name="check" /></button>
+        <button type="button" class="icon-btn" aria-label="Clear" title="Clear" (click)="clearFilters()"><app-icon name="close" /></button>
+      </div>
+    </form>
+  }
+</section>
+
+@if (!layoutsReady()) {
+  <p class="muted">Loading layouts…</p>
+} @else if (layouts().length === 0) {
   <section class="empty">
-    <h2>Nessun layout salvato</h2>
-    <p>Il primo layout parte da tutti i campi del metadato. Poi decidi visibilità, ordine, obbligatorietà e raggruppamenti.</p>
+    <h2>No saved layouts</h2>
+    <p>The first layout starts from every field of the metadata. Then you choose visibility, order, required fields, and groups.</p>
+  </section>
+} @else if (visible().length === 0) {
+  <section class="empty">
+    <h2>No matching layouts</h2>
   </section>
 } @else {
+  <section class="card-page">
   <div class="cards">
-    @for (layout of layouts(); track layout.id) {
+    @for (layout of pageItems(); track layout.id) {
       <article class="card">
         <p class="card-title">
-          <app-meta-icon [icon]="metadatas.icon(layout.metadataName)" [label]="layout.metadataName" [title]="layout.name" />
-          <span>{{ layout.metadataName }} · {{ layout.pageType }}</span>
+          <app-meta-icon [icon]="metadatas.icon(layout.metadataName)" [label]="layout.metadataName" />
+          <span class="card-name">{{ layout.name }}</span>
+          <span class="page-mark" [attr.title]="pageTitle(layout.pageType)" [attr.aria-label]="pageTitle(layout.pageType)">{{ pageMark(layout.pageType) }}</span>
         </p>
         <div class="card-foot">
           <time [attr.datetime]="layout.updatedAt">{{ layout.updatedAt | date: 'dd/MM/yy' }}</time>
           <div class="icon-row">
             @if (pendingId() === layout.id) {
-              <span class="confirm-ask">Eliminare?</span>
-              <button type="button" class="icon-btn btn-primary" aria-label="Conferma eliminazione" title="Conferma eliminazione" (click)="confirmRemove(layout)">
+              <span class="confirm-ask">Delete?</span>
+              <button type="button" class="icon-btn btn-primary" aria-label="Confirm delete" title="Confirm delete" (click)="confirmRemove(layout)">
                 <app-icon name="check" />
               </button>
-              <button type="button" class="icon-btn" aria-label="Annulla" title="Annulla" (click)="cancelRemove()">
+              <button type="button" class="icon-btn" aria-label="Cancel" title="Cancel" (click)="cancelRemove()">
                 <app-icon name="close" />
               </button>
             } @else {
-              <a class="icon-btn" [routerLink]="['/layouts', layout.id]" aria-label="Modifica" title="Modifica">
+              <a class="icon-btn" [routerLink]="['/layouts', layout.id]" aria-label="Edit" title="Edit">
                 <app-icon name="pencil" />
               </a>
+              <button type="button" class="icon-btn" aria-label="Clone" title="Clone" (click)="clone(layout)">
+                <app-icon name="clone" />
+              </button>
               @if (layout.pageType === 'list') {
-                <a class="icon-btn btn-primary" [routerLink]="['/play', layout.id]" aria-label="Prova" title="Prova">
+                <a class="icon-btn btn-primary" [routerLink]="['/play', layout.id]" aria-label="Play" title="Play">
                   <app-icon name="play" />
                 </a>
               }
-              <button type="button" class="icon-btn" aria-label="Elimina" title="Elimina" (click)="askRemove(layout)">
+              <button type="button" class="icon-btn" aria-label="Delete" title="Delete" (click)="askRemove(layout)">
                 <app-icon name="trash" />
               </button>
             }
@@ -56,27 +125,61 @@
       </article>
     }
   </div>
+  <p-paginator
+    [first]="pageStart()"
+    [rows]="pageSize()"
+    [totalRecords]="visible().length"
+    [rowsPerPageOptions]="pageSizes"
+    [showCurrentPageReport]="true"
+    currentPageReportTemplate="{first}–{last} of {totalRecords}"
+    (onPageChange)="changePage($event)" />
+  </section>
 }
 
-<section class="catalog">
-  <h2>Field type Formly</h2>
-  <p>Gli stessi tipi di snello-admin, registrati come type Formly e piazzabili nei layout.</p>
-  <div class="catalog-groups">
-    @for (group of groups; track group.name) {
-      <section class="catalog-group">
-        <h3>{{ group.name }}</h3>
-        <ul>
-          @for (type of group.types; track type.id) {
-            <li>
-              <strong class="type-mark">
-                <app-icon [name]="type.icon" />
-                {{ type.label }}
-              </strong>
-              <span>{{ type.hint }}</span>
-            </li>
-          }
-        </ul>
-      </section>
-    }
+@if (bulkOpen()) {
+  <div class="sheet-back" (click)="closeBulk()">
+    <section class="sheet bulk-sheet" role="dialog" aria-modal="true" aria-label="Create many layouts" (click)="$event.stopPropagation()">
+      <header>
+        <strong>Create many layouts</strong>
+        <button type="button" class="icon-btn" aria-label="Close" title="Close" (click)="closeBulk()">
+          <app-icon name="close" />
+        </button>
+      </header>
+      <div class="section-title">
+        <h2>Metadata</h2>
+        <div class="icon-row">
+          <button type="button" class="text-btn" (click)="selectAllMetadata()">Select all</button>
+          <button type="button" class="text-btn" (click)="clearMetadata()">Clear all</button>
+        </div>
+      </div>
+      <ul class="bulk-list">
+        @for (item of metadatas.list(); track item.uuid) {
+          <li>
+            <label>
+              <p-checkbox [binary]="true" [ngModel]="metadataOn(item.table_name)" [ngModelOptions]="{ standalone: true }" (ngModelChange)="toggleMetadata(item.table_name, $event)" />
+              <app-meta-icon [icon]="metadatas.icon(item.table_name)" [label]="item.table_name" />
+              <span>{{ item.description || item.table_name }}</span>
+            </label>
+          </li>
+        }
+      </ul>
+      <div class="bulk-kinds" role="group" aria-label="Page type">
+        @for (kind of kindChoices; track kind) {
+          <label>
+            <p-checkbox [binary]="true" [ngModel]="kindOn(kind)" [ngModelOptions]="{ standalone: true }" (ngModelChange)="toggleKind(kind, $event)" />
+            <span>{{ pageTitle(kind) }}</span>
+          </label>
+        }
+      </div>
+      <p class="muted">Existing metadata and type pairs are skipped. Names follow the table: list, edit, view.</p>
+      @if (bulkNote()) {
+        <p class="banner ok">{{ bulkNote() }}</p>
+      }
+      <div class="row-actions">
+        <button type="button" class="icon-btn btn-primary" aria-label="Create" title="Create" [disabled]="bulkBusy() || picked().length === 0 || kinds().length === 0" (click)="generate()">
+          <app-icon name="check" />
+        </button>
+      </div>
+    </section>
   </div>
-</section>
+}

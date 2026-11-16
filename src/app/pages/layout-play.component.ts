@@ -2,7 +2,7 @@ import { NgComponentOutlet } from '@angular/common';
 import { HttpClient, httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, effect, HostListener, inject, input, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { logicalFieldType, staticOptions } from '../core/field-types';
 import { filterFormFields, wizardFields } from '../core/layout-formly';
@@ -30,6 +30,7 @@ import { MetaIcon } from '../meta-icon';
 const MENU_FIELD = new Set(['select', 'multiselect', 'join', 'lookup', 'multijoin', 'multilookup']);
 const LINKED = new Set(['join', 'lookup', 'multijoin', 'multilookup', 'select', 'multiselect']);
 const COLUMN_KEY = 'snello.list.columns.';
+const PAGE_SIZES = [10, 20, 50];
 
 interface LabelBatch {
   table: string;
@@ -52,21 +53,24 @@ export class LayoutPlayComponent {
   private readonly store = inject(LayoutStore);
   readonly metadatas = inject(MetadataCatalog);
   private readonly router = inject(Router);
-  private readonly query = toSignal(inject(ActivatedRoute).queryParamMap);
+  private readonly route = inject(ActivatedRoute);
+  private readonly query = toSignal(this.route.queryParamMap);
   readonly id = input.required<string>();
   readonly embedded = input(false);
   readonly rowKey = input('');
   readonly entryOutlet = LayoutPlayComponent;
   readonly layout = computed(() => this.store.find(this.id()));
+  readonly layoutsReady = this.store.ready;
+  readonly layoutsError = this.store.error;
   readonly filtersOpen = signal(false);
   readonly columnsOpen = signal(false);
   readonly chosenFields = signal<string[] | null>(null);
   readonly appliedFilters = signal<{ name: string; label: string; value: string }[]>([]);
   readonly filterModel: Record<string, unknown> = {};
   readonly step = signal(0);
-  readonly pageStart = signal(0);
-  readonly pageSize = signal(10);
-  readonly pageSizes = [10, 20, 50];
+  readonly pageStart = signal(listPageStart(this.route.snapshot.queryParamMap));
+  readonly pageSize = signal(listPageSize(this.route.snapshot.queryParamMap));
+  readonly pageSizes = PAGE_SIZES;
   readonly total = signal(0);
   readonly sortField = signal<string | null>(null);
   readonly sortDir = signal<'asc' | 'desc'>('asc');
@@ -124,11 +128,23 @@ export class LayoutPlayComponent {
   });
 
   readonly createLayout = computed(() => this.operations().find((item) => item.pageType === 'edit') ?? null);
-  readonly sideLayoutId = computed(() => (this.embedded() || this.layout()?.pageType !== 'list' ? '' : (this.query()?.get('side') ?? '')));
-  readonly sideRecord = computed(() => (this.sideLayoutId() ? (this.query()?.get('row') ?? '') : ''));
-  readonly sideLayout = computed(() => this.store.find(this.sideLayoutId()));
+  readonly sideTarget = computed(() => {
+    if (this.embedded() || this.layout()?.pageType !== 'list') return null;
+    const params = this.query();
+    if (!params) return null;
+    const viewId = params.get('viewId');
+    if (viewId) return { mode: 'view' as const, record: viewId };
+    if (params.has('modId')) return { mode: 'edit' as const, record: params.get('modId') ?? '' };
+    return null;
+  });
+  readonly sideRecord = computed(() => this.sideTarget()?.record ?? '');
+  readonly sideLayout = computed(() => {
+    const mode = this.sideTarget()?.mode;
+    if (!mode) return null;
+    return this.operations().find((item) => item.pageType === mode) ?? null;
+  });
   readonly sideInputs = computed(() => ({
-    id: this.sideLayoutId(),
+    id: this.sideLayout()?.id ?? '',
     embedded: true,
     rowKey: this.sideRecord(),
   }));
@@ -238,10 +254,13 @@ export class LayoutPlayComponent {
       if (!layout || layout.pageType === 'list') return;
       const list = this.store.all().find((item) => item.metadataName === layout.metadataName && item.pageType === 'list');
       if (!list) return;
-      const row = this.query()?.get('record') ?? '';
+      const record = this.query()?.get('record') ?? '';
+      const queryParams = layout.pageType === 'view'
+        ? { viewId: record || null, modId: null, side: null, row: null, record: null }
+        : { modId: record, viewId: null, side: null, row: null, record: null };
       untracked(() => {
-        void this.router.navigate(['/play', list.id], {
-          queryParams: { side: layout.id, row: row || null },
+        void this.router.navigate([this.openedAt(), list.id], {
+          queryParams,
           replaceUrl: true,
         });
       });
@@ -249,7 +268,7 @@ export class LayoutPlayComponent {
 
     effect((onCleanup) => {
       if (this.embedded() || this.layout()?.pageType !== 'list') return;
-      document.body.style.overflow = this.sideLayoutId() ? 'hidden' : '';
+      document.body.style.overflow = this.sideLayout() ? 'hidden' : '';
       onCleanup(() => {
         document.body.style.overflow = '';
       });
@@ -260,8 +279,6 @@ export class LayoutPlayComponent {
       const record = this.embedded() ? this.rowKey() : this.routeRecord();
       untracked(() => {
         this.step.set(0);
-        this.pageStart.set(0);
-        this.pageSize.set(10);
         this.total.set(0);
         this.sortField.set(null);
         this.sortDir.set('asc');
@@ -294,6 +311,17 @@ export class LayoutPlayComponent {
     });
 
     effect(() => {
+      if (this.embedded() || this.layout()?.pageType !== 'list') return;
+      const params = this.query();
+      const size = listPageSize(params);
+      const start = listPageStart(params);
+      untracked(() => {
+        if (this.pageSize() !== size) this.pageSize.set(size);
+        if (this.pageStart() !== start) this.pageStart.set(start);
+      });
+    });
+
+    effect(() => {
       const status = this.rows.status();
       if (status !== 'resolved' && status !== 'local' && status !== 'reloading') return;
       const raw = this.rows.headers()?.get('x-total-count');
@@ -322,21 +350,27 @@ export class LayoutPlayComponent {
 
   closeSide(): void {
     void this.router.navigate([], {
-      queryParams: { side: null, row: null },
+      queryParams: { viewId: null, modId: null, side: null, row: null, record: null },
       queryParamsHandling: 'merge',
     });
   }
 
   @HostListener('document:keydown.escape')
   closeSideOnEscape(): void {
-    if (!this.embedded() && this.sideLayoutId()) this.closeSide();
+    if (!this.embedded() && this.sideLayout()) this.closeSide();
+  }
+
+  openParams(kind: string, id: string): Record<string, string | null> {
+    const clear = { side: null, row: null, record: null };
+    if (kind === 'view') return { ...clear, viewId: id, modId: null };
+    return { ...clear, modId: id, viewId: null };
   }
 
   applyFilters(): void {
     const value = this.filterForm().getRawValue() as Record<string, unknown>;
     this.writeFilterModel(value);
     this.filterParams.set(filterParams(this.searchDefinitions(), value));
-    this.pageStart.set(0);
+    this.publishPage(0);
     void this.publishFilters(value);
   }
 
@@ -345,7 +379,7 @@ export class LayoutPlayComponent {
     this.filterForm().reset();
     this.filterParams.set({});
     this.appliedFilters.set([]);
-    this.pageStart.set(0);
+    this.publishPage(0);
   }
 
   private async publishFilters(value: Record<string, unknown>): Promise<void> {
@@ -375,7 +409,7 @@ export class LayoutPlayComponent {
         const on = raw === true || raw === 1 || raw === '1' || raw === 'true';
         const off = raw === false || raw === 0 || raw === '0' || raw === 'false';
         if (!on && !off) continue;
-        chips.push({ name, label: field.label || name, value: on ? 'sì' : 'no' });
+        chips.push({ name, label: field.label || name, value: on ? 'yes' : 'no' });
         continue;
       }
       if (raw == null || raw === '' || raw === false) continue;
@@ -391,12 +425,12 @@ export class LayoutPlayComponent {
     const visible = this.visibleChoice(field.name ?? '');
     const stored = Array.isArray(raw) ? raw.map((item) => String(item)).join(', ') : String(raw);
     if ((logical === 'select' || logical === 'multiselect') && visible) return visible;
-    if (visible && visible !== stored && visible !== 'Nessun valore') return visible;
+    if (visible && visible !== stored && visible !== 'No value') return visible;
     if (MENU_FIELD.has(logical)) {
       const labels = await this.choiceLabels(field, raw);
       if (labels) return labels;
     }
-    if (raw === true) return 'sì';
+    if (raw === true) return 'yes';
     if (Array.isArray(raw)) return raw.map((item) => String(item)).filter((item) => item.length > 0).join(', ');
     return stored;
   }
@@ -412,7 +446,7 @@ export class LayoutPlayComponent {
     }
     if (control instanceof HTMLInputElement) return control.value.trim();
     const text = control?.closest('formly-field')?.querySelector('p.readonly')?.textContent?.trim() ?? '';
-    return text === 'Nessun valore' || text === '—' ? '' : text;
+    return text === 'No value' || text === '—' ? '' : text;
   }
 
   private async choiceLabels(field: FieldDefinition, raw: unknown): Promise<string> {
@@ -477,12 +511,15 @@ export class LayoutPlayComponent {
     this.rememberColumns([]);
   }
 
+  openedAt(): '/data' | '/play' {
+    return this.router.url.split('?')[0].startsWith('/data') ? '/data' : '/play';
+  }
+
   changePage(event: PaginatorState): void {
     const start = event.first ?? 0;
     const size = event.rows ?? this.pageSize();
     if (start === this.pageStart() && size === this.pageSize()) return;
-    this.pageStart.set(start);
-    this.pageSize.set(size);
+    this.publishPage(start, size);
   }
 
   sortBy(name: string): void {
@@ -492,7 +529,23 @@ export class LayoutPlayComponent {
       this.sortField.set(name);
       this.sortDir.set('asc');
     }
-    this.pageStart.set(0);
+    this.publishPage(0);
+  }
+
+  private publishPage(start: number, size = this.pageSize()): void {
+    const safeSize = PAGE_SIZES.includes(size) ? size : 10;
+    const page = Math.floor(Math.max(0, start) / safeSize) + 1;
+    this.pageSize.set(safeSize);
+    this.pageStart.set((page - 1) * safeSize);
+    if (this.embedded() || this.layout()?.pageType !== 'list') return;
+    const nextPage = page > 1 ? String(page) : null;
+    const nextSize = safeSize === 10 ? null : String(safeSize);
+    const params = this.query();
+    if ((params?.get('page') ?? null) === nextPage && (params?.get('size') ?? null) === nextSize) return;
+    void this.router.navigate([], {
+      queryParams: { page: nextPage, size: nextSize },
+      queryParamsHandling: 'merge',
+    });
   }
 
   ariaSort(name: string): 'ascending' | 'descending' | 'none' {
@@ -639,6 +692,17 @@ export class LayoutPlayComponent {
     for (const key of Object.keys(this.model)) delete this.model[key];
     Object.assign(this.model, next);
   }
+}
+
+function listPageSize(params: ParamMap | null | undefined): number {
+  const size = Number(params?.get('size'));
+  return PAGE_SIZES.includes(size) ? size : 10;
+}
+
+function listPageStart(params: ParamMap | null | undefined): number {
+  const page = Number(params?.get('page'));
+  if (!Number.isFinite(page) || page < 2) return 0;
+  return (Math.floor(page) - 1) * listPageSize(params);
 }
 
 function readListColumns(id: string): string[] | null {

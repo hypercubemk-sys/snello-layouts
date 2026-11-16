@@ -51,7 +51,7 @@ export class InputField extends FieldType<FieldTypeConfig> {
   }
 
   get searchTitle(): string {
-    return this.searchMark === 'like' ? 'Like' : 'Uguale';
+    return this.searchMark === 'like' ? 'Like' : 'Equals';
   }
 
   get inputType(): string {
@@ -90,7 +90,7 @@ export class TextareaField extends FieldType<FieldTypeConfig> {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (props.readonly) {
-      <p class="readonly">{{ state() === true ? 'Sì' : state() === false ? 'No' : '—' }}</p>
+      <p class="readonly">{{ state() === true ? 'Yes' : state() === false ? 'No' : '—' }}</p>
     } @else {
       <label class="check">
         <p-checkbox
@@ -116,8 +116,8 @@ export class CheckboxField extends FieldType<FieldTypeConfig> implements OnInit 
   }
 
   get caption(): string {
-    if (this.triState) return this.state() === true ? 'Sì' : this.state() === false ? 'No' : 'Indifferente';
-    return this.field.type === 'passivation' ? 'Record passivo' : 'Attivo';
+    if (this.triState) return this.state() === true ? 'Yes' : this.state() === false ? 'No' : 'Any';
+    return this.field.type === 'passivation' ? 'Passive record' : 'Active';
   }
 
   state(): boolean | null {
@@ -176,7 +176,7 @@ export class SelectField extends FieldType<FieldTypeConfig> {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (loading()) {
-      <p class="hint">Carico i valori…</p>
+      <p class="hint">Loading values…</p>
     }
     @if (props.readonly) {
       <p class="readonly">{{ shown }}</p>
@@ -302,8 +302,8 @@ export class TemporalField extends FieldType<FieldTypeConfig> implements OnInit 
   }
 
   get rangeTitle(): string | null {
-    if (this.rangeMark === 'from') return 'Da';
-    if (this.rangeMark === 'to') return 'A';
+    if (this.rangeMark === 'from') return 'From';
+    if (this.rangeMark === 'to') return 'To';
     return null;
   }
 
@@ -345,11 +345,11 @@ function pickerText(value: unknown, kind: string): string | null {
           }
         </span>
       } @empty {
-        <em class="hint">Nessun tag</em>
+        <em class="hint">No tags</em>
       }
     </div>
     @if (!props.readonly) {
-      <input [id]="id" placeholder="Aggiungi tag e premi invio" (keydown.enter)="add($any($event.target)); $event.preventDefault()" />
+      <input [id]="id" placeholder="Add a tag and press enter" (keydown.enter)="add($any($event.target)); $event.preventDefault()" />
     }
   `,
 })
@@ -414,15 +414,15 @@ export class MonacoField extends FieldType<FieldTypeConfig> {
       <div class="rich-view" [innerHTML]="shown"></div>
     } @else {
       <div class="rich-toolbar">
-        <button type="button" class="icon-btn" aria-label="Grassetto" title="Grassetto" (click)="command('bold')"><app-icon name="bold" /></button>
-        <button type="button" class="icon-btn" aria-label="Corsivo" title="Corsivo" (click)="command('italic')"><app-icon name="italic" /></button>
-        <button type="button" class="icon-btn" aria-label="Allinea a sinistra" title="Allinea a sinistra" (click)="command('justifyLeft')"><app-icon name="align-left" /></button>
-        <button type="button" class="icon-btn" aria-label="Centra" title="Centra" (click)="command('justifyCenter')"><app-icon name="align-center" /></button>
-        <button type="button" class="icon-btn" aria-label="Allinea a destra" title="Allinea a destra" (click)="command('justifyRight')"><app-icon name="align-right" /></button>
-        <button type="button" class="icon-btn" aria-label="Elenco" title="Elenco" (click)="command('insertUnorderedList')"><app-icon name="list-ul" /></button>
-        <button type="button" class="icon-btn" aria-label="Elenco numerato" title="Elenco numerato" (click)="command('insertOrderedList')"><app-icon name="list-ol" /></button>
+        <button type="button" class="icon-btn" aria-label="Bold" title="Bold" (click)="command('bold')"><app-icon name="bold" /></button>
+        <button type="button" class="icon-btn" aria-label="Italic" title="Italic" (click)="command('italic')"><app-icon name="italic" /></button>
+        <button type="button" class="icon-btn" aria-label="Align left" title="Align left" (click)="command('justifyLeft')"><app-icon name="align-left" /></button>
+        <button type="button" class="icon-btn" aria-label="Center" title="Center" (click)="command('justifyCenter')"><app-icon name="align-center" /></button>
+        <button type="button" class="icon-btn" aria-label="Align right" title="Align right" (click)="command('justifyRight')"><app-icon name="align-right" /></button>
+        <button type="button" class="icon-btn" aria-label="Bullet list" title="Bullet list" (click)="command('insertUnorderedList')"><app-icon name="list-ul" /></button>
+        <button type="button" class="icon-btn" aria-label="Numbered list" title="Numbered list" (click)="command('insertOrderedList')"><app-icon name="list-ol" /></button>
         <button type="button" class="icon-btn" aria-label="Link" title="Link" (click)="link()"><app-icon name="link" /></button>
-        <button type="button" class="icon-btn" aria-label="Pulisci" title="Pulisci" (click)="command('removeFormat')"><app-icon name="clear" /></button>
+        <button type="button" class="icon-btn" aria-label="Clear formatting" title="Clear formatting" (click)="command('removeFormat')"><app-icon name="clear" /></button>
       </div>
       <div class="rich-editor" [id]="id" contenteditable="true" (input)="commit($event)"></div>
     }
@@ -446,7 +446,7 @@ export class TinymceField extends FieldType<FieldTypeConfig> implements OnInit {
   }
 
   link(): void {
-    const url = window.prompt('Indirizzo del link');
+    const url = window.prompt('Link address');
     if (url) document.execCommand('createLink', false, url);
     this.sync();
   }

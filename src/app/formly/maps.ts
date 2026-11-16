@@ -12,8 +12,8 @@ import { Icon } from '../icon';
     <p class="readonly">{{ point() || '—' }}</p>
     @if (!props.readonly) {
       <div class="lookup-actions">
-        <input placeholder="Cerca un indirizzo" [value]="query()" (input)="query.set($any($event.target).value)" (keydown.enter)="search(); $event.preventDefault()" />
-        <button type="button" class="icon-btn" aria-label="Cerca" title="Cerca" (click)="search()"><app-icon name="search" /></button>
+        <input placeholder="Search an address" [value]="query()" (input)="query.set($any($event.target).value)" (keydown.enter)="search(); $event.preventDefault()" />
+        <button type="button" class="icon-btn" aria-label="Search" title="Search" (click)="search()"><app-icon name="search" /></button>
       </div>
       @if (error()) {
         <p class="error">{{ error() }}</p>
@@ -23,7 +23,7 @@ import { Icon } from '../icon';
       }
     }
     @if (frame()) {
-      <iframe class="map-frame" [src]="frame()" title="Mappa"></iframe>
+      <iframe class="map-frame" [src]="frame()" title="Map"></iframe>
     }
   `,
 })
@@ -47,16 +47,16 @@ export class LocationField extends FieldType<FieldTypeConfig> implements OnInit 
   async search(): Promise<void> {
     const query = this.query().trim();
     if (!query) {
-      this.error.set('Scrivi un indirizzo.');
+      this.error.set('Type an address.');
       this.results.set([]);
       return;
     }
     this.error.set('');
     try {
       this.results.set(await searchAddress(query));
-      if (this.results().length === 0) this.error.set('Nessun indirizzo trovato.');
+      if (this.results().length === 0) this.error.set('No address found.');
     } catch {
-      this.error.set('Ricerca indirizzo non disponibile.');
+      this.error.set('Address search is unavailable.');
     }
   }
 
@@ -90,13 +90,13 @@ export class LocationField extends FieldType<FieldTypeConfig> implements OnInit 
           }
         </li>
       } @empty {
-        <li class="hint">Nessun punto</li>
+        <li class="hint">No points</li>
       }
     </ol>
     @if (!props.readonly) {
       <div class="lookup-actions">
-        <input placeholder="Cerca un indirizzo da aggiungere" [value]="query()" (input)="query.set($any($event.target).value)" (keydown.enter)="search(); $event.preventDefault()" />
-        <button type="button" class="icon-btn" aria-label="Cerca" title="Cerca" (click)="search()"><app-icon name="search" /></button>
+        <input placeholder="Search an address to add" [value]="query()" (input)="query.set($any($event.target).value)" (keydown.enter)="search(); $event.preventDefault()" />
+        <button type="button" class="icon-btn" aria-label="Search" title="Search" (click)="search()"><app-icon name="search" /></button>
       </div>
       @if (error()) {
         <p class="error">{{ error() }}</p>
@@ -106,7 +106,7 @@ export class LocationField extends FieldType<FieldTypeConfig> implements OnInit 
       }
     }
     @if (frame()) {
-      <iframe class="map-frame" [src]="frame()" title="Percorso"></iframe>
+      <iframe class="map-frame" [src]="frame()" title="Path"></iframe>
     }
   `,
 })
@@ -130,15 +130,15 @@ export class PathField extends FieldType<FieldTypeConfig> implements OnInit {
   async search(): Promise<void> {
     const query = this.query().trim();
     if (!query) {
-      this.error.set('Scrivi un indirizzo.');
+      this.error.set('Type an address.');
       return;
     }
     this.error.set('');
     try {
       this.results.set(await searchAddress(query));
-      if (this.results().length === 0) this.error.set('Nessun indirizzo trovato.');
+      if (this.results().length === 0) this.error.set('No address found.');
     } catch {
-      this.error.set('Ricerca indirizzo non disponibile.');
+      this.error.set('Address search is unavailable.');
     }
   }
 

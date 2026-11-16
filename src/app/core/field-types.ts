@@ -25,37 +25,18 @@ export const FIELD_TYPE_CATALOG: FieldTypeInfo[] = [
   { id: 'multiselect', label: 'Multiselect', hint: 'options', icon: 'type-multiselect' },
   { id: 'tags', label: 'Tags', hint: 'chips', icon: 'type-tags' },
   { id: 'join', label: 'Join', hint: 'lookup table', icon: 'type-join' },
-  { id: 'lookup', label: 'Lookup', hint: 'join filtrabile', icon: 'type-lookup' },
-  { id: 'multijoin', label: 'Multijoin', hint: 'join multiplo', icon: 'type-multijoin' },
-  { id: 'multilookup', label: 'Multilookup', hint: 'lookup multiplo', icon: 'type-multilookup' },
+  { id: 'lookup', label: 'Lookup', hint: 'filterable join', icon: 'type-lookup' },
+  { id: 'multijoin', label: 'Multijoin', hint: 'multiple join', icon: 'type-multijoin' },
+  { id: 'multilookup', label: 'Multilookup', hint: 'multiple lookup', icon: 'type-multilookup' },
   { id: 'realtionships', label: 'Relationships', hint: 'metadata:id', icon: 'type-relationships' },
   { id: 'media', label: 'Media', hint: 'documento', icon: 'type-media' },
-  { id: 'image', label: 'Image', hint: 'immagine', icon: 'type-image' },
+  { id: 'image', label: 'Image', hint: 'image', icon: 'type-image' },
   { id: 'gmaplocation', label: 'Map location', hint: 'lat, lng', icon: 'type-location' },
   { id: 'gmappath', label: 'Map path', hint: 'punti', icon: 'type-path' },
 ];
 
 export function fieldTypeIcon(type: string): string {
   return FIELD_TYPE_CATALOG.find((item) => item.id === type)?.icon ?? 'type-string';
-}
-
-export const FIELD_TYPE_GROUPS: { name: string; types: string[] }[] = [
-  { name: 'base', types: ['string', 'number', 'decimal', 'password', 'email', 'text', 'boolean', 'passivation'] },
-  { name: 'editor', types: ['tinymce', 'monaco'] },
-  { name: 'time', types: ['date', 'datetime', 'time'] },
-  { name: 'media', types: ['media', 'image'] },
-  { name: 'join', types: ['select', 'multiselect', 'tags', 'join', 'lookup', 'multijoin', 'multilookup', 'realtionships'] },
-  { name: 'maps', types: ['gmaplocation', 'gmappath'] },
-];
-
-export function fieldTypeCatalogGroups(): { name: string; types: FieldTypeInfo[] }[] {
-  return FIELD_TYPE_GROUPS.map((group) => ({
-    name: group.name,
-    types: group.types.flatMap((id) => {
-      const info = FIELD_TYPE_CATALOG.find((item) => item.id === id);
-      return info ? [info] : [];
-    }),
-  }));
 }
 
 const KNOWN = new Set(FIELD_TYPE_CATALOG.map((item) => item.id));

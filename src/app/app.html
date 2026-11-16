@@ -1,19 +1,23 @@
 <div class="shell" [class.nav-open]="menuOpen()">
   @if (menuOpen()) {
-    <button type="button" class="nav-backdrop" aria-label="Chiudi menu" (click)="closeMenus()"></button>
+    <button type="button" class="nav-backdrop" aria-label="Close menu" (click)="closeMenus()"></button>
   }
   <aside>
-    <a class="rail-mark" routerLink="/layouts" aria-label="Snello" (click)="closeMenus()">
+    <a class="rail-mark" routerLink="/" aria-label="Snello" (click)="closeMenus()">
       <img src="snello-logo.svg" alt="" />
     </a>
     <nav id="app-nav">
-      <a routerLink="/layouts" title="Libreria" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenus()">
+      <a routerLink="/" title="Home" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenus()">
         <app-icon name="home" />
-        <span>Libreria</span>
+        <span>Home</span>
       </a>
-      <a routerLink="/layouts/new" title="Nuovo layout" routerLinkActive="active" (click)="closeMenus()">
-        <app-icon name="plus" />
-        <span>Nuovo layout</span>
+      <a routerLink="/layouts" title="Layouts" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenus()">
+        <app-icon name="layers" />
+        <span>Layouts</span>
+      </a>
+      <a routerLink="/data" title="Data" routerLinkActive="active" (click)="closeMenus()">
+        <app-icon name="list" />
+        <span>Data</span>
       </a>
     </nav>
   </aside>
@@ -27,38 +31,40 @@
             <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4h11M2.5 8h11M2.5 12h11" /></svg>
           }
         </button>
-        <a class="topbar-logo" routerLink="/layouts" aria-label="Snello" (click)="closeMenus()">
+        <a class="topbar-logo" routerLink="/" aria-label="Snello" (click)="closeMenus()">
           <img src="snello-logo.svg" alt="Snello" />
         </a>
-        <nav class="crumbs" aria-label="Percorso">
-          <a routerLink="/layouts" (click)="closeMenus()">Snello</a>
-          @for (crumb of crumbs(); track crumb.label) {
-            <span class="crumb-sep" aria-hidden="true">/</span>
-            <span aria-current="page">{{ crumb.label }}</span>
+        <nav class="crumbs" aria-label="Breadcrumb">
+          @for (crumb of crumbs(); track $index; let last = $last) {
+            @if (!$first) {
+              <span class="crumb-sep" aria-hidden="true">/</span>
+            }
+            @if (crumb.link && !last) {
+              <a [routerLink]="crumb.link" (click)="closeMenus()">{{ crumb.label }}</a>
+            } @else {
+              <span aria-current="page">{{ crumb.label }}</span>
+            }
           }
         </nav>
       </div>
       <div class="topbar-tools">
         <div class="user-wrap">
-          <button type="button" class="avatar" [attr.aria-label]="profile.name" [attr.aria-expanded]="userOpen()" (click)="toggleUser()">
-            {{ profile.initial }}
+          <button type="button" class="avatar" [attr.aria-label]="profile().name || profile().username || 'Account'" [attr.aria-expanded]="userOpen()" (click)="toggleUser()">
+            {{ profile().initial }}
           </button>
           @if (userOpen()) {
             <div class="user-tip" role="tooltip">
-              <strong>{{ profile.name }}</strong>
-              @if (profile.username) {
-                <span>Utente</span>
-                <p>{{ profile.username }}</p>
-              }
-              @if (profile.email) {
-                <span>Email</span>
-                <p>{{ profile.email }}</p>
-              }
-              <span>Realm</span>
-              <p>{{ profile.realm }}</p>
-              <span>Client</span>
-              <p>{{ profile.client }}</p>
-              <button type="button" class="icon-btn" aria-label="Esci" title="Esci" (click)="logout()">
+              <span>Username</span>
+              <p>{{ profile().username || '—' }}</p>
+              <span>Name</span>
+              <p>{{ profile().name || '—' }}</p>
+              <span>Surname</span>
+              <p>{{ profile().surname || '—' }}</p>
+              <span>Lang</span>
+              <p>{{ profile().lang }}</p>
+              <span>Roles</span>
+              <p>{{ profile().roles || '—' }}</p>
+              <button type="button" class="icon-btn" aria-label="Log out" title="Log out" (click)="logout()">
                 <app-icon name="logout" />
               </button>
             </div>
