@@ -5,7 +5,7 @@ import { FieldType, FieldTypeConfig, FormlyModule } from '@ngx-formly/core';
 import { joinKeyName, joinLabelName, joinSelect, SnelloApi } from '../core/snello-api';
 import { MetadataCatalog } from '../core/metadata-catalog';
 import { FieldDefinition, Metadata, SelectOption } from '../core/models';
-import { definitionOf, relationMark, rowsOf, splitCsv } from './kit';
+import { cellText, definitionOf, humanLabel, labeledOption, popupColumns, relationMark, rowsOf, splitCsv } from './kit';
 import { Icon } from '../icon';
 import { MetaIcon } from '../meta-icon';
 
@@ -15,7 +15,7 @@ import { MetaIcon } from '../meta-icon';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (props.readonly) {
-      <p class="readonly">{{ currentLabel() || keyText() || '—' }}</p>
+      <p class="readonly">{{ currentLabel() || '—' }}</p>
     } @else {
       <div class="suggest">
         <input
@@ -91,10 +91,6 @@ export class JoinField extends FieldType<FieldTypeConfig> implements OnInit {
     return this.rowLabel(this.current.value());
   }
 
-  keyText(): string {
-    return this.selectedId();
-  }
-
   type(value: string): void {
     this.draft.set(value);
     this.query.set(value);
@@ -125,15 +121,13 @@ export class JoinField extends FieldType<FieldTypeConfig> implements OnInit {
     const key = joinKeyName(definition);
     const label = joinLabelName(definition);
     return read()
-      .map((row) => ({ value: String(row[key] ?? ''), label: String(row[label] ?? row[key] ?? '') }))
-      .filter((option) => option.value.length > 0);
+      .map((row) => labeledOption(row, key, label))
+      .filter((option): option is SelectOption => !!option);
   }
 
   private rowLabel(row: Record<string, unknown> | null): string {
     if (!row) return '';
-    const label = joinLabelName(this.definition());
-    const value = row[label] ?? row[joinKeyName(this.definition())];
-    return value == null || value === '' ? '' : String(value);
+    return humanLabel(row, [joinLabelName(this.definition())]);
   }
 }
 
@@ -142,11 +136,24 @@ export class JoinField extends FieldType<FieldTypeConfig> implements OnInit {
   imports: [FormlyModule, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <p class="readonly">{{ currentLabel() || selectedId() || 'No value' }}</p>
+    @if (searching) {
+      <div class="chips">
+        @for (item of searchChips(); track item.value) {
+          <span>
+            {{ item.label }}
+            <button type="button" [attr.aria-label]="'Remove ' + item.label" [attr.title]="'Remove ' + item.label" (click)="drop(item.value)">×</button>
+          </span>
+        } @empty {
+          <em class="hint">Any</em>
+        }
+      </div>
+    } @else {
+      <p class="readonly">{{ currentLabel() || 'No value' }}</p>
+    }
     @if (!props.readonly) {
       <div class="lookup-actions">
         <button type="button" class="icon-btn btn-primary" aria-label="Select" title="Select" (click)="open.set(true)"><app-icon name="search" /></button>
-        <button type="button" class="icon-btn" aria-label="Clear" title="Clear" [disabled]="!selectedId()" (click)="clear()"><app-icon name="close" /></button>
+        <button type="button" class="icon-btn" aria-label="Clear" title="Clear" [disabled]="searching ? ids().length === 0 : !selectedId()" (click)="clear()"><app-icon name="close" /></button>
       </div>
     }
     @if (open()) {
@@ -167,11 +174,23 @@ export class JoinField extends FieldType<FieldTypeConfig> implements OnInit {
             <table class="data">
               <tbody>
                 @for (row of table(); track rowId(row)) {
-                  <tr [class.picked]="rowId(row) === selectedId()" (click)="choose(row)">
-                    @for (column of columns(); track column) {
-                      <td>{{ cell(row, column) }}</td>
-                    }
-                  </tr>
+                  @if (searching) {
+                    <tr [class.picked]="ids().includes(rowId(row))">
+                      <td class="pick-cell">
+                        <button type="button" class="icon-btn btn-primary" aria-label="Select this one" title="Select this one" (click)="chooseOne(row)"><app-icon name="check" /></button>
+                        <button type="button" class="icon-btn" [class.flagged]="ids().includes(rowId(row))" aria-label="Add to the selection" title="Add to the selection" (click)="toggle(row)"><app-icon name="flag" /></button>
+                      </td>
+                      @for (column of columns(); track column) {
+                        <td>{{ cell(row, column) }}</td>
+                      }
+                    </tr>
+                  } @else {
+                    <tr class="pickable" [class.picked]="rowId(row) === selectedId()" (click)="choose(row)">
+                      @for (column of columns(); track column) {
+                        <td>{{ cell(row, column) }}</td>
+                      }
+                    </tr>
+                  }
                 } @empty {
                   <tr><td>No results.</td></tr>
                 }
@@ -191,6 +210,7 @@ export class LookupField extends FieldType<FieldTypeConfig> implements OnInit {
   readonly query = signal('');
   readonly applied = signal('');
   readonly selectedId = signal('');
+  readonly ids = signal<string[]>([]);
   private readonly rows = httpResource<Record<string, unknown>[]>(
     () => {
       const definition = this.definition();
@@ -215,29 +235,40 @@ export class LookupField extends FieldType<FieldTypeConfig> implements OnInit {
     const status = this.rows.status();
     return status === 'resolved' || status === 'local' ? this.rows.value() : [];
   });
-  readonly columns = computed(() => {
-    const row = this.table()[0];
-    if (!row) return [];
-    const key = joinKeyName(this.definition());
-    const names = Object.keys(row);
-    const ordered = names.includes(key) ? [key, ...names.filter((name) => name !== key)] : names;
-    return ordered.slice(0, 6);
-  });
+  private readonly linked = httpResource<Record<string, unknown>[]>(
+    () => {
+      const definition = this.definition();
+      const ids = this.ids();
+      if (!this.searching || !definition?.join_table_name || ids.length === 0) return undefined;
+      return this.api.recordsByKeys(definition.join_table_name, joinKeyName(definition), ids, joinSelect(definition));
+    },
+    { defaultValue: [], parse: rowsOf },
+  );
+  readonly columns = computed(() => popupColumns(this.table()[0]));
+
+  get searching(): boolean {
+    return this.props['search'] === true;
+  }
 
   ngOnInit(): void {
     this.definition.set(definitionOf(this));
-    this.selectedId.set(this.readKey(this.formControl.value));
-    this.formControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((value) => this.selectedId.set(this.readKey(value)));
+    this.sync(this.formControl.value);
+    this.formControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((value) => this.sync(value));
   }
 
   currentLabel(): string {
     const status = this.current.status();
-    if (status !== 'resolved' && status !== 'local') return this.selectedId();
-    const row = this.current.value();
-    if (!row) return this.selectedId();
+    if (status !== 'resolved' && status !== 'local') return '';
+    return humanLabel(this.current.value(), [joinLabelName(this.definition())]);
+  }
+
+  searchChips(): SelectOption[] {
+    const status = this.linked.status();
+    const rows = status === 'resolved' || status === 'local' ? this.linked.value() : [];
+    const key = joinKeyName(this.definition());
     const label = joinLabelName(this.definition());
-    const value = row[label];
-    return value == null || value === '' ? this.selectedId() : String(value);
+    const labels = new Map(rows.map((row) => [String(row[key] ?? ''), humanLabel(row, [label])]));
+    return this.ids().map((id) => ({ value: id, label: labels.get(id) || 'Record' }));
   }
 
   applyQuery(): void {
@@ -252,6 +283,28 @@ export class LookupField extends FieldType<FieldTypeConfig> implements OnInit {
     this.open.set(false);
   }
 
+  chooseOne(row: Record<string, unknown>): void {
+    const id = this.rowId(row);
+    if (!id) return;
+    this.formControl.setValue([id]);
+    this.formControl.markAsDirty();
+    this.open.set(false);
+  }
+
+  toggle(row: Record<string, unknown>): void {
+    const id = this.rowId(row);
+    if (!id) return;
+    const current = this.ids();
+    this.formControl.setValue(current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+    this.formControl.markAsDirty();
+  }
+
+  drop(id: string): void {
+    const next = this.ids().filter((item) => item !== id);
+    this.formControl.setValue(next.length ? next : null);
+    this.formControl.markAsDirty();
+  }
+
   clear(): void {
     this.formControl.setValue(null);
     this.formControl.markAsDirty();
@@ -264,8 +317,12 @@ export class LookupField extends FieldType<FieldTypeConfig> implements OnInit {
   }
 
   cell(row: Record<string, unknown>, column: string): string {
-    const value = row[column];
-    return value == null ? '' : String(value);
+    return cellText(row[column]);
+  }
+
+  private sync(value: unknown): void {
+    if (this.searching) this.ids.set(splitCsv(value));
+    else this.selectedId.set(this.readKey(value));
   }
 
   private readKey(value: unknown): string {
@@ -346,7 +403,7 @@ export class MultijoinField extends FieldType<FieldTypeConfig> implements OnInit
 
   selected(): SelectOption[] {
     const labels = new Map(this.linkedOptions().map((option) => [option.value, option.label]));
-    return this.ids().map((id) => ({ value: id, label: labels.get(id) ?? id }));
+    return this.ids().map((id) => ({ value: id, label: labels.get(id) || 'Record' }));
   }
 
   suggestionsOptions(): SelectOption[] {
@@ -386,8 +443,8 @@ export class MultijoinField extends FieldType<FieldTypeConfig> implements OnInit
     const key = joinKeyName(this.definition());
     const label = joinLabelName(this.definition());
     return read()
-      .map((row) => ({ value: String(row[key] ?? ''), label: String(row[label] ?? row[key] ?? '') }))
-      .filter((option) => option.value.length > 0);
+      .map((row) => labeledOption(row, key, label))
+      .filter((option): option is SelectOption => !!option);
   }
 }
 
@@ -479,14 +536,7 @@ export class MultilookupField extends FieldType<FieldTypeConfig> implements OnIn
     const status = this.rows.status();
     return status === 'resolved' || status === 'local' ? this.rows.value() : [];
   });
-  readonly columns = computed(() => {
-    const row = this.table()[0];
-    if (!row) return [];
-    const key = joinKeyName(this.definition());
-    const names = Object.keys(row);
-    const ordered = names.includes(key) ? [key, ...names.filter((name) => name !== key)] : names;
-    return ordered.slice(0, 6);
-  });
+  readonly columns = computed(() => popupColumns(this.table()[0]));
 
   ngOnInit(): void {
     this.definition.set(definitionOf(this));
@@ -499,8 +549,8 @@ export class MultilookupField extends FieldType<FieldTypeConfig> implements OnIn
     const rows = status === 'resolved' || status === 'local' ? this.linked.value() : [];
     const key = joinKeyName(this.definition());
     const label = joinLabelName(this.definition());
-    const labels = new Map(rows.map((row) => [String(row[key] ?? ''), String(row[label] ?? row[key] ?? '')]));
-    return this.ids().map((id) => ({ value: id, label: labels.get(id) || id }));
+    const labels = new Map(rows.map((row) => [String(row[key] ?? ''), humanLabel(row, [label])]));
+    return this.ids().map((id) => ({ value: id, label: labels.get(id) || 'Record' }));
   }
 
   begin(): void {
@@ -537,8 +587,7 @@ export class MultilookupField extends FieldType<FieldTypeConfig> implements OnIn
   }
 
   cell(row: Record<string, unknown>, column: string): string {
-    const value = row[column];
-    return value == null ? '' : String(value);
+    return cellText(row[column]);
   }
 }
 
@@ -550,9 +599,10 @@ export class MultilookupField extends FieldType<FieldTypeConfig> implements OnIn
     <div class="chips">
       @for (item of chips(); track item) {
         <span>
-          <app-meta-icon [icon]="catalog.icon(mark(item).name)" [label]="mark(item).name" />
+          <app-meta-icon [icon]="catalog.icon(mark(item).name)" [label]="chipCaption(item)" />
+          {{ chipCaption(item) }}
           @if (!props.readonly) {
-            <button type="button" [attr.aria-label]="'Remove ' + mark(item).name" [attr.title]="'Remove ' + mark(item).name" (click)="remove(item)">×</button>
+            <button type="button" [attr.aria-label]="'Remove ' + chipCaption(item)" [attr.title]="'Remove ' + chipCaption(item)" (click)="remove(item)">×</button>
           }
         </span>
       } @empty {
@@ -586,7 +636,11 @@ export class MultilookupField extends FieldType<FieldTypeConfig> implements OnIn
           }
           <ul class="picker-list">
             @for (row of filtered(); track track(row)) {
-              <li><button type="button" (click)="choose(row)">{{ rowLabel(row) }}</button></li>
+              <li class="picker-row">
+                <span>{{ rowLabel(row) }}</span>
+                <button type="button" class="icon-btn btn-primary" aria-label="Select this one" title="Select this one" (click)="chooseOne(row)"><app-icon name="check" /></button>
+                <button type="button" class="icon-btn" [class.flagged]="flagged(row)" aria-label="Add to the selection" title="Add to the selection" (click)="accumulate(row)"><app-icon name="flag" /></button>
+              </li>
             } @empty {
               <li class="hint">No records.</li>
             }
@@ -604,6 +658,7 @@ export class RelationshipsField extends FieldType<FieldTypeConfig> implements On
   readonly metadataName = signal('');
   readonly query = signal('');
   readonly chips = signal<string[]>([]);
+  private readonly names = signal<Record<string, string>>({});
   readonly rows = httpResource<Record<string, unknown>[]>(
     () => {
       const name = this.metadataName();
@@ -629,16 +684,25 @@ export class RelationshipsField extends FieldType<FieldTypeConfig> implements On
     return this.catalog.list();
   }
 
-  choose(row: Record<string, unknown>): void {
-    const metadata = this.metadatas().find((item) => item.table_name === this.metadataName());
-    if (!metadata) return;
-    const keyName = metadata.table_key || 'uuid';
-    const keyValue = row[keyName] ?? row['uuid'];
-    if (keyValue == null) return;
-    const token = `${metadata.table_name}:${String(keyValue)}`;
-    if (this.props['search'] === true) this.write([token]);
-    else if (!this.chips().includes(token)) this.write([...this.chips(), token]);
+  chooseOne(row: Record<string, unknown>): void {
+    const token = this.tokenOf(row);
+    if (!token) return;
+    this.remember(token, this.rowLabel(row));
+    this.write([token]);
     this.open.set(false);
+  }
+
+  accumulate(row: Record<string, unknown>): void {
+    const token = this.tokenOf(row);
+    if (!token) return;
+    this.remember(token, this.rowLabel(row));
+    const current = this.chips();
+    this.write(current.includes(token) ? current.filter((item) => item !== token) : [...current, token]);
+  }
+
+  flagged(row: Record<string, unknown>): boolean {
+    const token = this.tokenOf(row);
+    return !!token && this.chips().includes(token);
   }
 
   remove(token: string): void {
@@ -649,12 +713,14 @@ export class RelationshipsField extends FieldType<FieldTypeConfig> implements On
     return relationMark(token);
   }
 
+  chipCaption(token: string): string {
+    return this.names()[token] || relationMark(token).name;
+  }
+
   rowLabel(row: Record<string, unknown>): string {
     const metadata = this.metadatas().find((item) => item.table_name === this.metadataName());
-    const extra = metadata?.table_key_addition;
-    const key = metadata?.table_key || 'uuid';
-    const label = extra ? row[extra] : undefined;
-    return label != null && label !== '' ? String(label) : String(row[key] ?? '');
+    const extra = metadata?.table_key_addition ?? '';
+    return humanLabel(row, [extra]) || metadata?.description || metadata?.table_name || 'Record';
   }
 
   track(row: Record<string, unknown>): string {
@@ -663,8 +729,21 @@ export class RelationshipsField extends FieldType<FieldTypeConfig> implements On
     return String(row[key] ?? JSON.stringify(row));
   }
 
+  private tokenOf(row: Record<string, unknown>): string {
+    const metadata = this.metadatas().find((item) => item.table_name === this.metadataName());
+    if (!metadata) return '';
+    const keyName = metadata.table_key || 'uuid';
+    const keyValue = row[keyName] ?? row['uuid'];
+    return keyValue == null ? '' : `${metadata.table_name}:${String(keyValue)}`;
+  }
+
+  private remember(token: string, label: string): void {
+    if (!label) return;
+    this.names.update((current) => ({ ...current, [token]: label }));
+  }
+
   private write(tokens: string[]): void {
-    this.formControl.setValue(tokens.join(','));
+    this.formControl.setValue(tokens.length ? tokens.join(',') : null);
     this.formControl.markAsDirty();
   }
 }

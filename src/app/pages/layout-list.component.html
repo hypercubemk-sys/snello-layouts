@@ -50,21 +50,37 @@
       </label>
       <label>
         Group
-        <select [value]="draftGroup()" (change)="onGroup($any($event.target).value)">
-          <option value="" [selected]="draftGroup() === ''">All</option>
-          @for (group of groups(); track group) {
-            <option [value]="group" [selected]="group === draftGroup()">{{ group }}</option>
-          }
-        </select>
+        <p-select
+          [options]="groupOptions()"
+          optionLabel="label"
+          optionValue="value"
+          [filter]="true"
+          filterPlaceholder="Search"
+          placeholder="All"
+          [showClear]="true"
+          [resetFilterOnHide]="true"
+          appendTo="body"
+          [fluid]="true"
+          [ngModel]="draftGroup()"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="onGroup($event)" />
       </label>
       <label>
         Metadata
-        <select [value]="draftMetadata()" (change)="draftMetadata.set($any($event.target).value)">
-          <option value="" [selected]="draftMetadata() === ''">All</option>
-          @for (item of usedMetadata(); track item.value) {
-            <option [value]="item.value" [selected]="item.value === draftMetadata()">{{ item.label }}</option>
-          }
-        </select>
+        <p-select
+          [options]="usedMetadata()"
+          optionLabel="label"
+          optionValue="value"
+          [filter]="true"
+          filterPlaceholder="Search"
+          placeholder="All"
+          [showClear]="true"
+          [resetFilterOnHide]="true"
+          appendTo="body"
+          [fluid]="true"
+          [ngModel]="draftMetadata()"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="onMetadata($event)" />
       </label>
       <label>
         Type

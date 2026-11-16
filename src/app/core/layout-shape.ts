@@ -134,6 +134,8 @@ function materializeSearch(field: FieldDefinition, mode: SearchMode): FieldDefin
   return [{ ...field, search_condition: 'eq', search_field_name: name }];
 }
 
+const LIST_SEARCH = new Set(['select', 'multiselect', 'join', 'lookup', 'multijoin', 'multilookup', 'realtionships']);
+
 export function filterParams(fields: FieldDefinition[], value: Record<string, unknown>): Record<string, string> {
   const params: Record<string, string> = {};
   for (const field of fields) {
@@ -145,12 +147,25 @@ export function filterParams(fields: FieldDefinition[], value: Record<string, un
       else if (raw === false || raw === 0 || raw === '0' || raw === 'false') params[paramName(field)] = '0';
       continue;
     }
+    if (LIST_SEARCH.has(logicalFieldType(field))) {
+      const values = listValues(raw);
+      if (values.length === 0) continue;
+      params[`${name}_in`] = values.join(',');
+      continue;
+    }
     if (raw == null || raw === '' || raw === false) continue;
     const serialized = Array.isArray(raw) ? raw.map((item) => String(item)).join(',') : String(raw);
     if (!serialized) continue;
     params[paramName(field)] = serialized;
   }
   return params;
+}
+
+function listValues(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.map((item) => String(item).trim()).filter((item) => item.length > 0);
+  if (typeof raw === 'string') return raw.split(',').map((item) => item.trim()).filter((item) => item.length > 0);
+  if (raw == null || raw === '' || raw === false) return [];
+  return [String(raw)];
 }
 
 function paramName(field: FieldDefinition): string {

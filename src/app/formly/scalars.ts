@@ -4,12 +4,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { CheckboxModule } from '@openng/optimus-ui/checkbox';
 import { DatePickerModule } from '@openng/optimus-ui/datepicker';
+import { MultiSelectModule } from '@openng/optimus-ui/multiselect';
 import { SelectModule } from '@openng/optimus-ui/select';
 import { FieldType, FieldTypeConfig, FormlyModule } from '@ngx-formly/core';
 import { joinKeyName, joinLabelName, SnelloApi } from '../core/snello-api';
 import { staticOptions } from '../core/field-types';
 import { SelectOption } from '../core/models';
-import { definitionOf, rowsOf, shownText, splitCsv } from './kit';
+import { definitionOf, isUuid, labeledOption, rowsOf, shownText, splitCsv } from './kit';
 import { Icon } from '../icon';
 
 @Component({
@@ -139,11 +140,25 @@ export class CheckboxField extends FieldType<FieldTypeConfig> implements OnInit 
 
 @Component({
   selector: 'app-formly-select',
-  imports: [ReactiveFormsModule, SelectModule],
+  imports: [ReactiveFormsModule, SelectModule, MultiSelectModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (props.readonly) {
       <p class="readonly">{{ shown }}</p>
+    } @else if (searching) {
+      <p-multiselect
+        [inputId]="id"
+        [options]="choices"
+        optionLabel="label"
+        optionValue="value"
+        [filter]="true"
+        filterPlaceHolder="Search"
+        [showClear]="true"
+        [resetFilterOnHide]="true"
+        [appendTo]="'body'"
+        [fluid]="true"
+        placeholder="All"
+        [formControl]="formControl" />
     } @else {
       <p-select
         [inputId]="id"
@@ -159,14 +174,31 @@ export class CheckboxField extends FieldType<FieldTypeConfig> implements OnInit 
     }
   `,
 })
-export class SelectField extends FieldType<FieldTypeConfig> {
+export class SelectField extends FieldType<FieldTypeConfig> implements OnInit {
+  ngOnInit(): void {
+    if (!this.searching) return;
+    const value = this.formControl.value;
+    if (typeof value === 'string' || (value != null && !Array.isArray(value))) {
+      this.formControl.setValue(splitCsv(value), { emitEvent: false });
+    }
+  }
+
+  get searching(): boolean {
+    return this.props['search'] === true;
+  }
+
   get choices(): SelectOption[] {
     const definition = definitionOf(this);
     return definition ? staticOptions(definition) : [];
   }
 
   get shown(): string {
-    return shownText(this.formControl.value);
+    const labels = new Map(this.choices.map((option) => [option.value, option.label]));
+    const text = splitCsv(this.formControl.value)
+      .map((value) => labels.get(value) ?? value)
+      .filter((value) => value.length > 0 && !isUuid(value))
+      .join(', ');
+    return text || '—';
   }
 }
 
@@ -220,14 +252,15 @@ export class MultiselectField extends FieldType<FieldTypeConfig> implements OnIn
     const label = joinLabelName(definition);
     return this.rows
       .value()
-      .map((row) => ({ value: String(row[key] ?? ''), label: String(row[label] ?? row[key] ?? '') }))
-      .filter((option) => option.value.length > 0);
+      .map((row) => labeledOption(row, key, label))
+      .filter((option): option is SelectOption => !!option);
   }
 
   get shown(): string {
     const labels = new Map(this.choices().map((option) => [option.value, option.label]));
     return splitCsv(this.formControl.value)
-      .map((id) => labels.get(id) ?? id)
+      .map((id) => labels.get(id) ?? '')
+      .filter((label) => label.length > 0 && !isUuid(label))
       .join(', ') || '—';
   }
 }

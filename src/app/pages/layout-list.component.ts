@@ -6,6 +6,7 @@ import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { CheckboxModule } from '@openng/optimus-ui/checkbox';
 import { Paginator, PaginatorState } from '@openng/optimus-ui/paginator';
+import { SelectModule } from '@openng/optimus-ui/select';
 import { FormsModule } from '@angular/forms';
 import { seedBody } from '../core/layout-shape';
 import { FieldDefinition, LayoutDocument, PageKind } from '../core/models';
@@ -19,7 +20,7 @@ const PAGE_SIZES = [10, 20, 50];
 
 @Component({
   selector: 'app-layout-list',
-  imports: [RouterLink, DatePipe, Icon, MetaIcon, CheckboxModule, FormsModule, Paginator],
+  imports: [RouterLink, DatePipe, Icon, MetaIcon, CheckboxModule, FormsModule, Paginator, SelectModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './layout-list.component.html',
 })
@@ -55,6 +56,7 @@ export class LayoutListComponent {
   readonly pageSize = signal(libraryPageSize(this.route.snapshot.queryParamMap));
   readonly pageSizes = PAGE_SIZES;
   readonly groups = computed(() => groupsOf(this.layouts().map((layout) => layout.metadataName), (table) => this.metadatas.groupOf(table)));
+  readonly groupOptions = computed(() => this.groups().map((group) => ({ label: group, value: group })));
   readonly usedMetadata = computed(() => {
     const group = this.draftGroup();
     const names = [...new Set(this.layouts().map((layout) => layout.metadataName))]
@@ -128,9 +130,14 @@ export class LayoutListComponent {
     this.publishPage(0);
   }
 
-  onGroup(value: string): void {
-    this.draftGroup.set(value);
-    if (value && this.metadatas.groupOf(this.draftMetadata()) !== value) this.draftMetadata.set('');
+  onGroup(value: string | null): void {
+    const group = value ?? '';
+    this.draftGroup.set(group);
+    if (group && this.metadatas.groupOf(this.draftMetadata()) !== group) this.draftMetadata.set('');
+  }
+
+  onMetadata(value: string | null): void {
+    this.draftMetadata.set(value ?? '');
   }
 
   clearFilters(): void {

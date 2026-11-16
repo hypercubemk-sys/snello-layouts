@@ -15,8 +15,8 @@ The pencil opens the editor. The copy icon clones the layout. The trash icon ask
 Click the **Filters** area to open it. You can narrow the library by:
 
 - **Name**, a contains search
-- **Group**, the metadata group
-- **Metadata**
+- **Group**, the metadata group. Open the menu and type to narrow it.
+- **Metadata**. Open the menu and type to narrow it.
 - **Type**: list, edit, or view
 
 Choosing a group limits the metadata list to that group. The search starts when you press Enter or the check button, and the panel closes. The X clears every filter and shows the full library again. Applied filters stay visible as chips while the panel is closed.
@@ -40,7 +40,7 @@ A metadata that already has that page type is skipped. Names follow the table na
 Open a list layout with the pencil. **Columns** is the field list.
 
 - The checkbox shows or hides the column.
-- The menu beside a field is how that column is searched: Like, Equals, Range, Boolean, or None. Images are not searchable.
+- The menu beside a field is how that column is searched: Like, Equals, Range, Boolean, or None. Images are not searchable. Select, join, and relationship searches accept more than one value.
 - The arrows change the column order.
 
 Fields on the left add or remove a column. Changing the metadata, or switching between a list and a form, rebuilds the layout. The page asks you to confirm first.

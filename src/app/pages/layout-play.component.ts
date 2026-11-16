@@ -19,7 +19,7 @@ import { FieldDefinition, Metadata } from '../core/models';
 import { LayoutStore } from '../core/layout-store';
 import { MetadataCatalog } from '../core/metadata-catalog';
 import { SnelloApi, joinKeyName, joinLabelName, joinSelect } from '../core/snello-api';
-import { relationMark, rowsOf, splitCsv } from '../formly/kit';
+import { humanLabel, isUuid, relationMark, rowsOf, splitCsv } from '../formly/kit';
 import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { CheckboxModule } from '@openng/optimus-ui/checkbox';
 import { FormlyModule } from '@ngx-formly/core';
@@ -437,7 +437,8 @@ export class LayoutPlayComponent {
     const logical = logicalFieldType(field);
     const visible = this.visibleChoice(field.name ?? '');
     const stored = Array.isArray(raw) ? raw.map((item) => String(item)).join(', ') : String(raw);
-    if ((logical === 'select' || logical === 'multiselect') && visible) return visible;
+    if ((logical === 'select' || logical === 'multiselect') && visible && !visible.split(',').every((item) => isUuid(item.trim()))) return visible;
+    if (logical === 'realtionships') return this.relationshipText(raw);
     if (visible && visible !== stored && visible !== 'No value') return visible;
     if (MENU_FIELD.has(logical)) {
       const labels = await this.choiceLabels(field, raw);
@@ -462,6 +463,30 @@ export class LayoutPlayComponent {
     return text === 'No value' || text === '—' ? '' : text;
   }
 
+  private async relationshipText(raw: unknown): Promise<string> {
+    const labels: string[] = [];
+    for (const token of splitCsv(raw)) {
+      const [table, id] = token.split(':');
+      if (!table) continue;
+      const metadata = this.metadatas.find(table);
+      const title = metadata?.description || table;
+      if (!id) {
+        labels.push(title);
+        continue;
+      }
+      try {
+        const row = await firstValueFrom(
+          this.http.get<Record<string, unknown>>(`${this.api.records}/${encodeURIComponent(table)}/${encodeURIComponent(id)}`),
+        );
+        const text = humanLabel(row, [metadata?.table_key_addition ?? '']);
+        labels.push(text ? `${title}: ${text}` : title);
+      } catch {
+        labels.push(title);
+      }
+    }
+    return labels.join(', ');
+  }
+
   private async choiceLabels(field: FieldDefinition, raw: unknown): Promise<string> {
     const ids = splitCsv(raw);
     if (ids.length === 0) return '';
@@ -477,8 +502,8 @@ export class LayoutPlayComponent {
       const rows = rowsOf(await firstValueFrom(this.http.get(request.url, { params })));
       const key = joinKeyName(field);
       const label = joinLabelName(field);
-      const found = new Map(rows.map((row) => [String(row[key] ?? ''), String(row[label] ?? row[key] ?? '')]));
-      return ids.map((id) => found.get(id) || id).filter((item) => item.length > 0).join(', ');
+      const found = new Map(rows.map((row) => [String(row[key] ?? ''), humanLabel(row, [label])]));
+      return ids.map((id) => found.get(id) || '').filter((item) => item.length > 0).join(', ');
     } catch {
       return '';
     }

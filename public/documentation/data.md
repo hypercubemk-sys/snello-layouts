@@ -8,8 +8,8 @@ Open **Data** from Home or from the side menu. Every card is a list layout. The 
 
 Click **Filters** to narrow the cards:
 
-- **Group** is the metadata group. The metadata menu then lists only that group.
-- **Metadata** is the table the list belongs to.
+- **Group** is the metadata group. Open the menu and type to narrow it. The metadata menu then lists only that group.
+- **Metadata** is the table the list belongs to. Open the menu and type to narrow it.
 
 Press Enter or the check button to apply. The panel closes and a chip shows the active filter. The X clears the group and the metadata and shows every list again.
 
@@ -21,7 +21,7 @@ The plus button starts a new record when this metadata has an edit layout. It op
 
 ## Search the records
 
-Click **Filters**. The fields are the ones marked searchable on the list layout. A text search can be a contains match or an exact match. Dates can be a range. A number range is labeled **from** and **to**. Booleans are yes, no, or any.
+Click **Filters**. The fields are the ones marked searchable on the list layout. A text search can be a contains match or an exact match. Dates can be a range. A number range is labeled **from** and **to**. Booleans are yes, no, or any. A select accepts several values. A join or a relationship opens a list: the check keeps only that record, and the flag adds it to the selection. Those lists show names, not identifiers.
 
 The search does not start while you type. Press Enter or the check button. The panel closes and the list reloads. The X clears every field and loads the list without filters. Active filters stay visible as chips.
 

@@ -1,5 +1,5 @@
 import { FieldType, FieldTypeConfig } from '@ngx-formly/core';
-import { FieldDefinition } from '../core/models';
+import { FieldDefinition, SelectOption } from '../core/models';
 
 export interface MapHit {
   label: string;
@@ -33,6 +33,52 @@ export function splitCsv(value: unknown): string[] {
     .split(',')
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
+}
+
+const UUID_TEXT = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isUuid(value: unknown): boolean {
+  return typeof value === 'string' && UUID_TEXT.test(value.trim());
+}
+
+export function popupColumns(row: Record<string, unknown> | undefined, limit = 6): string[] {
+  if (!row) return [];
+  return Object.keys(row)
+    .filter((name) => name.toLowerCase() !== 'uuid')
+    .slice(0, limit);
+}
+
+export function cellText(value: unknown): string {
+  if (value == null || value === '') return '';
+  const text = String(value);
+  return isUuid(text) ? '' : text;
+}
+
+export function humanLabel(row: Record<string, unknown> | null | undefined, preferred: string[]): string {
+  if (!row) return '';
+  const names = [...preferred, 'name', 'title', 'label', 'description'];
+  for (const name of names) {
+    if (!name || name.toLowerCase() === 'uuid') continue;
+    const value = row[name];
+    if (value == null || value === '') continue;
+    const text = String(value).trim();
+    if (text && !isUuid(text)) return text;
+  }
+  for (const [name, value] of Object.entries(row)) {
+    if (name.toLowerCase() === 'uuid' || value == null || value === '') continue;
+    if (typeof value !== 'string' && typeof value !== 'number') continue;
+    const text = String(value).trim();
+    if (text && !isUuid(text)) return text;
+  }
+  return '';
+}
+
+export function labeledOption(row: Record<string, unknown>, key: string, label: string): SelectOption | null {
+  const value = row[key];
+  if (value == null || value === '') return null;
+  const id = String(value).trim();
+  if (!id) return null;
+  return { value: id, label: humanLabel(row, [label]) || 'Record' };
 }
 
 export function relationMark(token: string): { name: string; letter: string } {

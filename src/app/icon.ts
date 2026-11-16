@@ -14,6 +14,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         @case ('trash') { <path d="M3.5 4.5h9M6 4.5V3h4v1.5M5 4.5l.5 8h5l.5-8" /> }
         @case ('clone') { <path d="M6 2.6h7.4v7.4H6z" /><path d="M2.6 6h7.4v7.4H2.6z" /> }
         @case ('check') { <path d="M3.5 8.5 6.5 11.5 12.5 4.5" /> }
+        @case ('flag') { <path d="M4 2.6v10.8M4 3.4h7.4L9.6 5.8l1.8 2.4H4" /> }
         @case ('back') { <path d="M10 3.5 5 8l5 4.5M5 8h8" /> }
         @case ('forward') { <path d="M6 3.5 11 8l-5 4.5M3 8h8" /> }
         @case ('up') { <path d="M8 12V4M8 4 4.5 7.5M8 4l3.5 3.5" /> }
