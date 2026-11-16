@@ -1,17 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import Keycloak from 'keycloak-js';
 import { firstValueFrom } from 'rxjs';
 import { LayoutBody, LayoutDocument, PageKind } from './models';
 import { SnelloApi } from './snello-api';
-
-const CACHE_KEY = 'snello.layouts.v1';
 
 @Injectable({ providedIn: 'root' })
 export class LayoutStore {
   private readonly http = inject(HttpClient);
   private readonly api = inject(SnelloApi);
-  private readonly keycloak = inject(Keycloak);
   private readonly documents = signal<LayoutDocument[]>([]);
   readonly ready = signal(false);
   readonly error = signal('');
@@ -31,9 +27,8 @@ export class LayoutStore {
   async reload(): Promise<void> {
     try {
       const remote = await this.fetchAll();
-      const moved = await this.adoptCache(remote);
-      this.documents.set(moved.documents.map(englishDefaults));
-      this.error.set(moved.failed === 0 ? '' : `Couldn't move ${moved.failed} layouts to snello.`);
+      this.documents.set(remote.map(englishDefaults));
+      this.error.set('');
     } catch {
       this.documents.set([]);
       this.error.set("Can't read layouts from api.sne.lol.");
@@ -68,27 +63,6 @@ export class LayoutStore {
       ? this.http.put<unknown>(`${url}/${encodeURIComponent(document.id)}`, toApi(document))
       : this.http.post<unknown>(url, toApi(document));
     return fromApi(await firstValueFrom(request)) ?? document;
-  }
-
-  private async adoptCache(remote: LayoutDocument[]): Promise<{ documents: LayoutDocument[]; failed: number }> {
-    const cached = readCache();
-    if (!cached.length) return { documents: remote, failed: 0 };
-    const known = new Set(remote.map((item) => item.id));
-    const pending = cached.filter((item) => !known.has(item.id));
-    if (!this.keycloak.authenticated) return { documents: [...remote, ...pending], failed: 0 };
-    const documents = [...remote];
-    const failed: LayoutDocument[] = [];
-    for (const document of pending) {
-      try {
-        documents.push(await this.write(document, false));
-      } catch {
-        failed.push(document);
-        documents.push(document);
-      }
-    }
-    if (failed.length) localStorage.setItem(CACHE_KEY, JSON.stringify(failed));
-    else localStorage.removeItem(CACHE_KEY);
-    return { documents, failed: failed.length };
   }
 }
 
@@ -145,23 +119,6 @@ function isPageType(value: string): value is PageKind {
 
 function text(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
-}
-
-function readCache(): LayoutDocument[] {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    const parsed = raw ? JSON.parse(raw) as unknown : [];
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isCachedDocument);
-  } catch {
-    return [];
-  }
-}
-
-function isCachedDocument(value: unknown): value is LayoutDocument {
-  if (!value || typeof value !== 'object') return false;
-  const row = value as LayoutDocument;
-  return typeof row.id === 'string' && isPageType(row.pageType) && !!parseBody(row.body, row.pageType);
 }
 
 function englishDefaults(document: LayoutDocument): LayoutDocument {
