@@ -48,6 +48,16 @@
         </nav>
       </div>
       <div class="topbar-tools">
+        <button
+          type="button"
+          class="api-status"
+          [class]="'api-status is-' + apiStatus.state()"
+          [attr.title]="statusTitle()"
+          [attr.aria-label]="statusTitle()"
+          (click)="apiStatus.check()">
+          <span class="api-dot"></span>
+          <span class="api-status-text">{{ statusLabel() }}</span>
+        </button>
         <button type="button" class="icon-btn api-btn" [class.on]="api.open()" aria-label="API reference" title="API reference" [attr.aria-expanded]="api.open()" (click)="api.toggle()">
           <app-icon name="book" />
         </button>

@@ -9,6 +9,7 @@ import { ButtonDirective } from '@openng/optimus-ui/button';
 import { AiPanel } from './ai-panel';
 import { ApiPanel } from './api-panel';
 import { ApiPanelState } from './core/api-panel-state';
+import { ApiStatus } from './core/api-status';
 import { AiPanelState } from './core/ai-panel-state';
 import { Icon } from './icon';
 import { Toast } from './toast';
@@ -42,8 +43,28 @@ export class App {
   readonly userOpen = signal(false);
   readonly ai = inject(AiPanelState);
   readonly api = inject(ApiPanelState);
+  readonly apiStatus = inject(ApiStatus);
   readonly profile = this.session.user;
   readonly version = APP_VERSION;
+  readonly statusLabel = computed(() => {
+    switch (this.apiStatus.state()) {
+      case 'online':
+        return `API ${this.apiStatus.latency()} ms`;
+      case 'slow':
+        return `API slow · ${this.apiStatus.latency()} ms`;
+      case 'offline':
+        return 'API offline';
+      default:
+        return 'API …';
+    }
+  });
+  readonly statusTitle = computed(() => {
+    const status = this.apiStatus;
+    const checked = status.checkedAt();
+    const when = checked ? ` Checked ${checked.toLocaleTimeString()}.` : '';
+    const text = { checking: 'Checking the API…', online: 'The API is reachable.', slow: 'The API answers slowly.', offline: 'The API does not answer.' }[status.state()];
+    return `${text} ${status.detail()}.${when} Click to check again.`.replace(/\.\./g, '.');
+  });
   readonly fullName = computed(() => `${this.profile().name ?? ''} ${this.profile().surname ?? ''}`.trim());
   readonly roles = computed(() => (this.profile().roles ?? '').split(/[,\s]+/).filter((role) => role.length > 0));
 
