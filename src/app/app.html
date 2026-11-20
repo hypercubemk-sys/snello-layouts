@@ -58,9 +58,6 @@
           <span class="api-dot"></span>
           <span class="api-status-text">{{ statusLabel() }}</span>
         </button>
-        <button type="button" class="icon-btn api-btn" [class.on]="api.open()" aria-label="API reference" title="API reference" [attr.aria-expanded]="api.open()" (click)="api.toggle()">
-          <app-icon name="book" />
-        </button>
         <div class="user-wrap">
           <button type="button" class="user-btn" aria-haspopup="menu" [attr.aria-expanded]="userOpen()" [attr.aria-label]="'Account: ' + (profile().username || profile().name)" (click)="toggleUser()">
             <span class="avatar">{{ profile().initial }}</span>

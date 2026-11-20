@@ -195,6 +195,7 @@
                       <td class="ops">
                         <div class="icon-row">
                           @for (operation of operations(); track operation.id) {
+                            @if (operation.pageType !== 'view') {
                             <button
                               type="button"
                               class="icon-btn"
@@ -203,7 +204,19 @@
                               (click)="openWindow(operation.pageType, recordId(row))">
                               <app-icon [name]="operationIcon(operation.pageType)" />
                             </button>
+                            }
                           }
+                          <div class="row-menu-wrap">
+                            <button type="button" class="icon-btn row-more" aria-label="More" title="More" aria-haspopup="menu" [attr.aria-expanded]="menuRow() === recordId(row)" (click)="toggleRowMenu($event, row)">
+                              <app-icon name="more" />
+                            </button>
+                            @if (menuRow() === recordId(row)) {
+                              <div class="row-menu" role="menu" (click)="$event.stopPropagation()">
+                                <button type="button" role="menuitem" (click)="duplicateRow(row)"><app-icon name="clone" /> Duplicate</button>
+                                <button type="button" role="menuitem" class="danger" (click)="deleteRow(row)"><app-icon name="trash" /> Delete</button>
+                              </div>
+                            }
+                          </div>
                         </div>
                       </td>
                     }
@@ -377,6 +390,9 @@
                 <button type="button" pButton [text]="true" severity="danger" size="small" [disabled]="saving()" (click)="askDelete()">
                   <app-icon name="trash" /> Delete
                 </button>
+              }
+              @if (embedded()) {
+                <button type="button" pButton [text]="true" severity="secondary" size="small" [disabled]="saving()" (click)="cancelEdit()">Cancel</button>
               }
               <button type="button" pButton severity="contrast" size="small" [disabled]="saving()" (click)="saveRecord()">
                 <app-icon [name]="saving() ? 'loader' : 'save'" [class.spin]="saving()" /> {{ recordKey() ? 'Update' : 'Create' }}

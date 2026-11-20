@@ -1540,9 +1540,9 @@ app-field-row .fr-actions { margin-left: auto; }
 /* stepper for multi-page forms */
 .stepper.multi { display: block; margin-bottom: 16px; }
 .steps { display: flex; align-items: center; list-style: none; margin: 0; padding: 0; }
-.step { display: flex; align-items: center; flex: 1 1 0; min-width: 0; }
+.step { display: flex; align-items: center; flex: 0 1 auto; min-width: 0; }
 .step:first-child { flex: 0 0 auto; }
-.step + .step::before { content: ""; flex: 1 1 auto; min-width: 12px; height: 2px; margin: 0 8px; background: var(--line); border-radius: 2px; }
+.step + .step::before { content: ""; flex: none; width: 32px; height: 2px; margin: 0 8px; background: var(--line); border-radius: 2px; }
 .step.done::before, .step.active::before { background: var(--ink); }
 .step button { display: inline-flex; align-items: center; gap: 8px; flex: none; max-width: 100%; padding: 4px 6px 4px 0; border: 0; background: transparent; color: var(--muted); font-size: 13px; font-weight: 500; }
 .step button:hover { color: var(--ink); }
@@ -1934,3 +1934,11 @@ p-paginator.p-paginator,
 .data-split.is-split .table-wrap p-paginator,
 .table-wrap p-paginator.p-paginator { border: 0; }
 p-paginator.p-paginator .p-paginator-rpp-dropdown { border: 0; background: #f0f1f0; }
+
+/* row "more" menu in the list */
+.row-menu-wrap { position: relative; display: inline-flex; }
+.row-menu { position: absolute; right: 0; top: 100%; z-index: 30; min-width: 150px; margin-top: 4px; padding: 4px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12); display: flex; flex-direction: column; }
+.row-menu button { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 0; border-radius: var(--radius); background: transparent; color: var(--ink); font-size: 13px; text-align: left; }
+.row-menu button:hover { background: #f0f1f0; }
+.row-menu button.danger { color: #d92d20; }
+.row-menu button.danger:hover { background: #fdecea; }
