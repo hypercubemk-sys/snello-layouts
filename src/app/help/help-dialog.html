@@ -24,8 +24,18 @@
           }
           <article>
             @if (section.heading !== section.document) {
-              <h3>{{ section.heading }}</h3>
+              @if (embedded()) {
+                <h3>
+                  <button type="button" class="help-toggle" [attr.aria-expanded]="isOpen(section)" (click)="toggle(section.id)">
+                    <app-icon name="chevron-down" />
+                    <span>{{ section.heading }}</span>
+                  </button>
+                </h3>
+              } @else {
+                <h3>{{ section.heading }}</h3>
+              }
             }
+            @if (isOpen(section)) {
             @for (block of section.blocks; track $index) {
               @switch (block.kind) {
                 @case ('h3') {
@@ -49,6 +59,7 @@
                   </ol>
                 }
               }
+            }
             }
           </article>
         }
