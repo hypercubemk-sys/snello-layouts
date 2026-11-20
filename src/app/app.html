@@ -19,6 +19,10 @@
         <app-icon name="list" />
         <span>Data</span>
       </a>
+      <a routerLink="/api" title="API" routerLinkActive="active" (click)="closeMenus()">
+        <app-icon name="book" />
+        <span>API</span>
+      </a>
     </nav>
   </aside>
   <div class="workspace">
@@ -44,29 +48,42 @@
         </nav>
       </div>
       <div class="topbar-tools">
-        <button type="button" class="icon-btn help-btn" aria-label="Help" title="Help" [attr.aria-expanded]="helpOpen()" (click)="toggleHelp()">
-          <app-icon name="help" />
+        <button type="button" class="icon-btn api-btn" [class.on]="api.open()" aria-label="API reference" title="API reference" [attr.aria-expanded]="api.open()" (click)="api.toggle()">
+          <app-icon name="book" />
         </button>
         <div class="user-wrap">
-          <button type="button" class="avatar" [attr.aria-label]="profile().name || profile().username || 'Account'" [attr.aria-expanded]="userOpen()" (click)="toggleUser()">
-            {{ profile().initial }}
+          <button type="button" class="user-btn" aria-haspopup="menu" [attr.aria-expanded]="userOpen()" [attr.aria-label]="'Account: ' + (profile().username || profile().name)" (click)="toggleUser()">
+            <span class="avatar">{{ profile().initial }}</span>
+            <span class="user-name">{{ profile().username || profile().name || 'Account' }}</span>
+            <app-icon name="chevron-down" />
           </button>
           @if (userOpen()) {
-            <div class="user-tip" role="tooltip">
-              <span>Username</span>
-              <p>{{ profile().username || '—' }}</p>
-              <span>Name</span>
-              <p>{{ profile().name || '—' }}</p>
-              <span>Surname</span>
-              <p>{{ profile().surname || '—' }}</p>
-              <span>Lang</span>
-              <p>{{ profile().lang }}</p>
-              <span>Roles</span>
-              <p>{{ profile().roles || '—' }}</p>
-              <span>Version</span>
-              <p>{{ version }}</p>
-              <button type="button" class="icon-btn" aria-label="Log out" title="Log out" (click)="logout()">
-                <app-icon name="logout" />
+            <div class="user-menu" role="menu">
+              <div class="user-card">
+                <span class="avatar lg">{{ profile().initial }}</span>
+                <div class="user-ident">
+                  <strong>{{ fullName() || profile().username || '—' }}</strong>
+                  @if (profile().username) {
+                    <span>{{ '@' + profile().username }}</span>
+                  }
+                </div>
+              </div>
+              <dl class="user-facts">
+                <div><dt>Language</dt><dd>{{ profile().lang }}</dd></div>
+                <div>
+                  <dt>Roles</dt>
+                  <dd>
+                    @for (role of roles(); track role) {
+                      <span class="role">{{ role }}</span>
+                    } @empty {
+                      —
+                    }
+                  </dd>
+                </div>
+                <div><dt>Version</dt><dd>{{ version }}</dd></div>
+              </dl>
+              <button type="button" pButton [text]="true" severity="danger" size="small" class="user-logout" (click)="logout()">
+                <app-icon name="logout" /> Log out
               </button>
             </div>
           }
@@ -76,13 +93,11 @@
         </button>
       </div>
     </header>
-    @if (helpOpen()) {
-      <app-help-dialog (closed)="helpOpen.set(false)" />
-    }
     <main>
       <router-outlet />
     </main>
   </div>
   <app-ai-panel class="ai-dock" />
+  <app-api-panel />
   <app-toast />
 </div>

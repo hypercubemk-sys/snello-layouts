@@ -1,4 +1,4 @@
-<div class="sheet-back help-back" (click)="close()">
+<div class="sheet-back help-back" [class.embedded]="embedded()" (click)="close()">
   <section class="sheet help-sheet" role="dialog" aria-modal="true" aria-label="Help" (click)="$event.stopPropagation()">
     <header>
       <strong>Help</strong>

@@ -5,11 +5,13 @@ import Keycloak from 'keycloak-js';
 import { filter, map } from 'rxjs';
 import { LayoutStore } from './core/layout-store';
 import { Session } from './core/session';
+import { ButtonDirective } from '@openng/optimus-ui/button';
 import { AiPanel } from './ai-panel';
+import { ApiPanel } from './api-panel';
+import { ApiPanelState } from './core/api-panel-state';
 import { AiPanelState } from './core/ai-panel-state';
 import { Icon } from './icon';
 import { Toast } from './toast';
-import { HelpDialog } from './help/help-dialog';
 import { APP_VERSION } from './version';
 
 interface Crumb {
@@ -19,7 +21,7 @@ interface Crumb {
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, HelpDialog, AiPanel, Toast],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, AiPanel, ButtonDirective, ApiPanel, Toast],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './app.html',
 })
@@ -38,10 +40,12 @@ export class App {
   readonly crumbs = computed(() => this.trail(this.path() ?? '/'));
   readonly menuOpen = signal(false);
   readonly userOpen = signal(false);
-  readonly helpOpen = signal(false);
   readonly ai = inject(AiPanelState);
+  readonly api = inject(ApiPanelState);
   readonly profile = this.session.user;
   readonly version = APP_VERSION;
+  readonly fullName = computed(() => `${this.profile().name ?? ''} ${this.profile().surname ?? ''}`.trim());
+  readonly roles = computed(() => (this.profile().roles ?? '').split(/[,\s]+/).filter((role) => role.length > 0));
 
   logout(): void {
     void this.keycloak.logout({ redirectUri: window.location.origin });
@@ -49,20 +53,12 @@ export class App {
 
   toggleMenu(): void {
     this.userOpen.set(false);
-    this.helpOpen.set(false);
     this.menuOpen.update((open) => !open);
   }
 
   toggleUser(): void {
     this.menuOpen.set(false);
-    this.helpOpen.set(false);
     this.userOpen.update((open) => !open);
-  }
-
-  toggleHelp(): void {
-    this.menuOpen.set(false);
-    this.userOpen.set(false);
-    this.helpOpen.update((open) => !open);
   }
 
   closeMenus(): void {
@@ -84,6 +80,7 @@ export class App {
     const data: Crumb = { label: 'Data', link: '/data' };
     if (path === '/layouts') return [home, { label: 'Layouts' }];
     if (path === '/data') return [home, { label: 'Data' }];
+    if (path === '/api') return [home, { label: 'API' }];
     if (path === '/layouts/new') return [home, layouts, { label: 'New layout' }];
     const editor = path.match(/^\/layouts\/([^/]+)$/);
     if (editor) return [home, layouts, { label: this.store.find(editor[1])?.name || 'Layout' }];

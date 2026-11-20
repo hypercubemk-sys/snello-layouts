@@ -1272,7 +1272,9 @@ app-layout-editor.embedded { display: block; height: 100%; }
 
 /* Ask AI dock (right side of the shell, collapsible) */
 .ai-dock { display: block; position: sticky; top: 0; align-self: start; height: 100vh; border-left: 1px solid var(--line); background: #fff; z-index: 40; }
-.ai-dock .ai-card { width: 340px; height: 100%; display: grid; grid-template-rows: auto 1fr auto; }
+.ai-dock .ai-card { width: 360px; height: 100%; display: flex; flex-direction: column; }
+.ai-dock .ai-card > .ai-log { flex: 1 1 auto; }
+.ai-dock .ai-card > .ai-composer { flex: none; }
 .ai-dock header { display: flex; align-items: center; justify-content: space-between; height: var(--topbar); padding: 0 12px 0 16px; border-bottom: 1px solid var(--line); }
 .ai-title { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
 .ai-title .glyph svg { width: 15px; height: 15px; }
@@ -1657,3 +1659,107 @@ app-layout-play.play-embedded { display: flex; flex-direction: column; flex: 1 1
 .cf-remove:hover, .cf-remove:focus-visible { color: #fff; border-color: #d92d20; background: #d92d20; }
 
 .cf-label { height: 20px; line-height: 20px; }
+
+/* AI panel tabs and embedded help */
+.ai-tabs { display: flex; gap: 4px; padding: 8px 12px 0; border-bottom: 1px solid var(--line); flex: none; }
+.ai-tabs button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; color: var(--muted); font-size: 13px; font-weight: 500; }
+.ai-tabs button:hover { color: var(--ink); }
+.ai-tabs button.on { color: var(--ink); border-bottom-color: var(--ink); }
+.ai-tabs .glyph svg { width: 14px; height: 14px; }
+.ai-help { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 16px; }
+.help-back.embedded { position: static; display: block; padding: 0; background: none; }
+.help-back.embedded .help-sheet { width: 100%; max-height: none; padding: 0; border-radius: 0; box-shadow: none; overflow: visible; }
+.help-back.embedded .help-sheet > header { display: none; }
+
+/* user button and menu */
+.user-btn { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px 0 4px; border: 0; border-radius: var(--radius); background: transparent; color: var(--ink); font-size: 13px; font-weight: 500; }
+.user-btn:hover, .user-btn[aria-expanded="true"] { background: #f0f1f0; }
+.user-btn .glyph svg { width: 14px; height: 14px; color: var(--muted); }
+.user-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.avatar { width: 24px; height: 24px; border: 0; background: var(--ink); color: #fff; font-size: 12px; text-transform: uppercase; }
+.avatar.lg { width: 40px; height: 40px; font-size: 16px; }
+.user-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 90; width: 280px; display: grid; gap: 12px; padding: 14px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.user-card { display: flex; align-items: center; gap: 12px; }
+.user-ident { display: grid; min-width: 0; line-height: 1.3; }
+.user-ident strong { font-size: 14px; overflow-wrap: anywhere; }
+.user-ident span { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.user-facts { display: grid; gap: 8px; margin: 0; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 12px; }
+.user-facts > div { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.user-facts dt { color: var(--muted); flex: none; }
+.user-facts dd { margin: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; text-align: right; overflow-wrap: anywhere; }
+.role { padding: 1px 8px; border-radius: var(--radius); background: #f0f1f0; font-size: 11px; line-height: 18px; }
+.user-logout.p-button.p-component { justify-self: start; height: 32px; padding: 0 10px; border: 0; gap: 8px; }
+.user-logout .glyph svg { width: 15px; height: 15px; }
+@media (max-width: 700px) { .user-name { display: none; } }
+
+/* API reference (page and slide-over) */
+.api { display: grid; grid-template-columns: 300px minmax(0, 1fr); height: 100%; min-height: 0; }
+.api-nav, .api-detail { min-height: 0; min-width: 0; overflow-y: auto; overscroll-behavior: contain; }
+.api-nav { padding: 12px; background: #fff; border-right: 1px solid var(--line); display: block; }
+.api-detail { padding: 20px 24px; background: #f7f8f7; }
+.api-search { width: 100%; margin-bottom: 8px; }
+.api-note { margin: 8px 0; font-size: 12px; }
+.api-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 8px; border: 0; border-radius: var(--radius); background: transparent; color: var(--ink); text-align: left; font-size: 12px; }
+.api-item:hover { background: #f4f5f4; }
+.api-item.sel { background: #eceeec; }
+.api-item .glyph svg { width: 14px; height: 14px; }
+.api-guide { font-weight: 600; font-size: 13px; padding: 8px; }
+.api-group { margin-top: 6px; }
+.api-group-head { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 8px; border: 0; background: transparent; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.api-count { padding: 0 6px; border-radius: 999px; background: #f0f1f0; font-size: 11px; line-height: 16px; }
+.api-path { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11.5px; }
+.method { flex: none; min-width: 40px; padding: 1px 6px; border-radius: var(--radius); background: #eceeec; color: var(--ink); font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; letter-spacing: 0.03em; }
+.method.m-get { background: #eceeec; }
+.method.m-post { background: var(--ink); color: #fff; }
+.method.m-put { background: #d4d6d4; }
+.method.m-delete { background: #fdecea; color: #d92d20; }
+.method.m-patch { background: #d4d6d4; }
+.api-head { display: flex; align-items: center; gap: 10px; }
+.api-head .method { font-size: 12px; padding: 3px 10px; }
+.api-fullpath { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 14px; overflow-wrap: anywhere; }
+.api-summary { margin: 8px 0 0; font-size: 14px; font-weight: 500; }
+.api-desc { margin-top: 6px; font-size: 13px; white-space: pre-wrap; }
+.api-detail h2 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+.api-detail h3 { margin: 22px 0 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.api-detail p, .api-points li { font-size: 13px; line-height: 1.5; }
+.api-lead { margin-bottom: 4px; }
+.api-points { margin: 8px 0 0; padding-left: 1.2rem; display: grid; gap: 4px; }
+.api-detail code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; background: #eceeec; padding: 0 4px; border-radius: var(--radius); }
+.api-table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); font-size: 12px; }
+.api-table th, .api-table td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.api-table th { color: var(--muted); font-weight: 500; }
+.api-table tr:last-child td { border-bottom: 0; }
+.api .req { color: #d92d20; margin-left: 2px; }
+.api-responses { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 13px; }
+.api-codewrap { position: relative; }
+.api-code { margin: 0; padding: 12px 40px 12px 12px; max-height: 320px; overflow: auto; font-size: 12px; line-height: 1.5; border-radius: var(--radius); white-space: pre-wrap; overflow-wrap: anywhere; }
+.api-copy { position: absolute; top: 6px; right: 6px; color: #c4c7c4; }
+.api-copy:hover { color: #fff; background: rgba(255, 255, 255, 0.12); }
+.api-try { display: grid; gap: 10px; margin-top: 8px; }
+.api-try label { display: grid; gap: 4px; font-size: 12px; }
+.api-send { display: flex; align-items: center; gap: 12px; margin-top: 12px; min-width: 0; }
+.api-url { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.api-result { margin-top: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; overflow: hidden; }
+.api-result > header { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; border-bottom: 1px solid var(--line); font-size: 12px; }
+.api-result > header .icon-btn { margin-left: auto; }
+.api-result.bad > header b { color: #d92d20; }
+.api-result .api-code { border-radius: 0; max-height: 360px; padding-right: 12px; }
+.api-back { margin: -8px 0 12px -8px; }
+.api-page { height: calc(100vh - var(--topbar) - 56px); margin: 0 -32px -40px; min-height: 0; }
+.api.compact { display: block; height: 100%; }
+.api.compact .api-nav { height: 100%; border-right: 0; }
+.api.compact .api-detail { display: none; height: 100%; }
+.api.compact.show-detail .api-nav { display: none; }
+.api.compact.show-detail .api-detail { display: block; }
+@media (max-width: 1100px) { .api:not(.compact) { grid-template-columns: 220px minmax(0, 1fr); } }
+
+/* API slide-over */
+.api-backdrop { position: fixed; inset: 0; z-index: 85; background: rgba(17, 17, 17, 0.28); }
+.api-panel { position: fixed; top: 0; right: 0; bottom: 0; z-index: 86; width: min(560px, 100vw); display: flex; flex-direction: column; background: #fff; border-left: 1px solid var(--line); box-shadow: -16px 0 40px rgba(0, 0, 0, 0.12); animation: api-in 180ms ease-out; }
+.api-panel > header { display: flex; align-items: center; justify-content: space-between; height: 56px; padding: 0 12px 0 16px; border-bottom: 1px solid var(--line); flex: none; }
+.api-panel-title { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+.api-panel-title .glyph svg { width: 16px; height: 16px; }
+.api-panel-tools { display: flex; gap: 2px; }
+.api-panel app-api-explorer { display: block; flex: 1 1 auto; min-height: 0; }
+@keyframes api-in { from { transform: translateX(24px); opacity: 0.6; } }
+.topbar-tools button.api-btn.on { background: #f0f1f0; }
