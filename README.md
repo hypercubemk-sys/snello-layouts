@@ -11,6 +11,10 @@ Layouts are not stored in the browser. Every read is a GET and every save is a P
 
 A list layout defines columns, search, and custom filters. A custom filter has a label and a type (`string`, `boolean`, `date`, `numeric`), then either column conditions (fixed or based on the entered value) or a name plus a REST condition. The condition list is the one in [snello-api](https://github.com/snello-cms/snello-api/blob/main/docs/rest-query-params.md#quick-reference).
 
+## UI design
+
+The interface follows one design system (page bar, edge-to-edge panes, resizers, forms, dialogs, toast). See [docs/ui-design.md](docs/ui-design.md) before adding or restyling a page.
+
 ## Start
 
 ```bash

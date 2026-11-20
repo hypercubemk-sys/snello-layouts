@@ -25,11 +25,7 @@
     <header class="topbar">
       <div class="topbar-start">
         <button type="button" class="icon-btn menu-toggle" aria-label="Menu" aria-controls="app-nav" [attr.aria-expanded]="menuOpen()" (click)="toggleMenu()">
-          @if (menuOpen()) {
-            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4L4 12" /></svg>
-          } @else {
-            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4h11M2.5 8h11M2.5 12h11" /></svg>
-          }
+          <app-icon [name]="menuOpen() ? 'close' : 'menu'" />
         </button>
         <a class="topbar-logo" routerLink="/" aria-label="Snello" (click)="closeMenus()">
           <img src="snello-logo.svg" alt="Snello" />
@@ -75,6 +71,9 @@
             </div>
           }
         </div>
+        <button type="button" class="icon-btn ai-btn" [class.on]="ai.open()" aria-label="Ask AI" title="Ask AI" [attr.aria-expanded]="ai.open()" (click)="ai.toggle()">
+          <app-icon name="sparkle" />
+        </button>
       </div>
     </header>
     @if (helpOpen()) {
@@ -84,4 +83,6 @@
       <router-outlet />
     </main>
   </div>
+  <app-ai-panel class="ai-dock" />
+  <app-toast />
 </div>

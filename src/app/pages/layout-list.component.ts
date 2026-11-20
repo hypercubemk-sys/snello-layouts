@@ -1,11 +1,13 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { ButtonDirective } from '@openng/optimus-ui/button';
 import { CheckboxModule } from '@openng/optimus-ui/checkbox';
 import { Paginator, PaginatorState } from '@openng/optimus-ui/paginator';
+import { SelectButton } from '@openng/optimus-ui/selectbutton';
 import { IconField } from '@openng/optimus-ui/iconfield';
 import { InputIcon } from '@openng/optimus-ui/inputicon';
 import { SelectModule } from '@openng/optimus-ui/select';
@@ -17,12 +19,14 @@ import { groupsOf, MetadataCatalog } from '../core/metadata-catalog';
 import { SnelloApi } from '../core/snello-api';
 import { Icon } from '../icon';
 import { MetaIcon } from '../meta-icon';
+import { PageBar } from '../page-bar';
+import { LayoutEditorComponent } from './layout-editor.component';
 
 const PAGE_SIZES = [10, 20, 50];
 
 @Component({
   selector: 'app-layout-list',
-  imports: [RouterLink, DatePipe, Icon, MetaIcon, CheckboxModule, FormsModule, Paginator, SelectModule, IconField, InputIcon],
+  imports: [RouterLink, DatePipe, NgTemplateOutlet, LayoutEditorComponent, PageBar, ButtonDirective, SelectButton, Icon, MetaIcon, CheckboxModule, FormsModule, Paginator, SelectModule, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './layout-list.component.html',
 })
@@ -91,6 +95,24 @@ export class LayoutListComponent {
       return true;
     });
   });
+  private readonly storedView: 'split' | 'cards' = localStorage.getItem('layout-library-view') === 'cards' ? 'cards' : 'split';
+  readonly view = computed<'split' | 'cards'>(() => {
+    const value = this.query()?.get('view');
+    return value === 'cards' || value === 'split' ? value : this.storedView;
+  });
+  readonly viewOptions = [
+    { label: 'Split', value: 'split', icon: 'columns' },
+    { label: 'Cards', value: 'cards', icon: 'grid' },
+  ];
+  readonly selectedId = signal<string | null>(null);
+  readonly selected = computed(() => {
+    const items = this.visible();
+    return items.find((layout) => layout.id === this.selectedId()) ?? this.pageItems()[0] ?? null;
+  });
+  readonly selectedList = computed(() => {
+    const layout = this.selected();
+    return layout ? [layout] : [];
+  });
   readonly pageItems = computed(() => {
     const size = this.pageSize();
     const start = this.pageStart();
@@ -98,6 +120,9 @@ export class LayoutListComponent {
   });
 
   constructor() {
+    if (!this.route.snapshot.queryParamMap.has('view')) {
+      void this.router.navigate([], { queryParams: { view: this.storedView }, queryParamsHandling: 'merge', replaceUrl: true });
+    }
     effect(() => {
       const params = this.query();
       const size = libraryPageSize(params);
@@ -116,6 +141,16 @@ export class LayoutListComponent {
       if (start <= maxStart) return;
       untracked(() => this.publishPage(maxStart, size));
     });
+  }
+
+  setView(view: 'split' | 'cards' | null): void {
+    if (!view) return;
+    localStorage.setItem('layout-library-view', view);
+    void this.router.navigate([], { queryParams: { view }, queryParamsHandling: 'merge' });
+  }
+
+  select(id: string): void {
+    this.selectedId.set(id);
   }
 
   metadataLabel(name: string): string {

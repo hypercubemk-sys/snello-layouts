@@ -7,13 +7,14 @@ import { SelectModule } from '@openng/optimus-ui/select';
 import { LayoutStore } from '../core/layout-store';
 import { groupsOf, MetadataCatalog } from '../core/metadata-catalog';
 import { Icon } from '../icon';
+import { PageBar } from '../page-bar';
 import { MetaIcon } from '../meta-icon';
 
 const PAGE_SIZES = [10, 20, 50];
 
 @Component({
   selector: 'app-data-layouts',
-  imports: [RouterLink, FormsModule, Icon, MetaIcon, Paginator, SelectModule],
+  imports: [PageBar, RouterLink, FormsModule, Icon, MetaIcon, Paginator, SelectModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './data-layouts.component.html',
 })

@@ -1,39 +1,50 @@
-<section class="page-head">
-  <div>
-    <p class="kicker">Builder</p>
-    <h1>{{ name() || 'New layout' }}</h1>
-  </div>
-  <div class="row-actions">
-    <a class="icon-btn" routerLink="/layouts" aria-label="Library" title="Library"><app-icon name="back" /></a>
+<app-page-bar
+  kicker="Builder"
+  [title]="name() || 'New layout'"
+  [back]="embedded() ? '' : '/layouts'"
+  backLabel="Library"
+  [editable]="!!id()"
+  editLabel="Edit layout settings"
+  [flush]="true"
+  (edit)="settingsOpen.set(true)">
     @if (viewTargets().length) {
-      <button type="button" class="btn btn-primary" (click)="updateViews()" [disabled]="saving()">Update the view too</button>
+      <button type="button" pButton [text]="true" severity="secondary" size="small" class="bar-action" title="Save this layout and copy its arrangement to the view" (click)="updateViews()" [disabled]="saving()">
+        <app-icon name="refresh" [class.spin]="saving()" />
+        Update view too
+      </button>
+      <span class="bar-sep" aria-hidden="true"></span>
     }
     @if (id()) {
-      <button type="button" class="icon-btn btn-primary" aria-label="Save" title="Save" (click)="save()" [disabled]="!metadataName() || saving()">
-        <app-icon name="check" />
+      <button
+        type="button"
+        pButton
+        severity="contrast"
+        size="small"
+        class="save-btn bar-action"
+        [class.is-dirty]="dirty()"
+        [attr.aria-label]="saving() ? 'Saving' : dirty() ? 'Save' : 'Saved'"
+        title="Save (Ctrl/⌘ + S)"
+        (click)="save()"
+        [disabled]="!metadataName() || saving() || !dirty()">
+        <app-icon [name]="saving() ? 'loader' : dirty() ? 'save' : 'check'" [class.spin]="saving()" />
+        {{ saving() ? 'Saving…' : dirty() ? 'Save' : 'Saved' }}
       </button>
     } @else {
-      <button type="button" class="icon-btn btn-primary" aria-label="Create" title="Create" (click)="createDrafts()" [disabled]="!canCreate()">
-        <app-icon name="check" />
+      <button type="button" pButton severity="contrast" size="small" class="save-btn" aria-label="Create" title="Create" (click)="createDrafts()" [disabled]="!canCreate() || saving()">
+        <app-icon name="plus" />
+        Create
       </button>
     }
-  </div>
-</section>
+</app-page-bar>
 
 @if (loadError()) {
   <p class="banner">{{ loadError() }}</p>
-}
-@if (saved()) {
-  <p class="banner ok">Layout saved.</p>
-}
-@if (viewNotice()) {
-  <p class="banner ok">{{ viewNotice() }}</p>
 }
 @if (metadatas.resource.status() === 'error') {
   <p class="banner">Can't read metadata from api.sne.lol.</p>
 }
 
-<section class="setup">
+<ng-template #setupFields>
   <label>
     Metadata
     <span class="meta-pick">
@@ -59,7 +70,28 @@
       <input [value]="name()" (input)="onName($event)" placeholder="metadata edit" />
     </label>
   }
-</section>
+</ng-template>
+
+@if (!id()) {
+  <section class="setup">
+    <ng-container [ngTemplateOutlet]="setupFields" />
+  </section>
+}
+@if (settingsOpen() && id()) {
+  <div class="sheet-back" (click)="settingsOpen.set(false)">
+    <section class="sheet settings-sheet" role="dialog" aria-modal="true" aria-label="Layout settings" (click)="$event.stopPropagation()">
+      <header>
+        <strong>Layout settings</strong>
+        <button type="button" class="icon-btn" aria-label="Close" title="Close" (click)="settingsOpen.set(false)">
+          <app-icon name="close" />
+        </button>
+      </header>
+      <div class="settings-form">
+        <ng-container [ngTemplateOutlet]="setupFields" />
+      </div>
+    </section>
+  </div>
+}
 
 @if (!metadataName()) {
   <section class="empty">
@@ -83,58 +115,38 @@
     }
   </section>
 } @else {
-  <div class="studio">
-    <aside class="palette">
-      <h2>Fields</h2>
-      <ul>
-        @for (field of fields(); track field.uuid ?? field.name) {
-          <li>
-            <button
-              type="button"
-              [disabled]="pageType() !== 'list' && usedNames().has(field.name || '')"
-              (click)="pageType() === 'list' ? toggleColumn(field.name || '') : addField(field.name || '')">
-              <span class="type-badge" [attr.title]="typeTitle(field.name || '')" [attr.aria-label]="typeTitle(field.name || '')">
-                <app-icon [name]="typeIcon(field.name || '')" />
-              </span>
-              <strong>{{ field.label || field.name }}</strong>
-            </button>
-          </li>
-        }
-      </ul>
-    </aside>
-
+  <div class="studio" #studio cdkDropListGroup [class.is-list]="pageType() === 'list'" [style.--side-w.px]="sideWidth()">
     <section class="canvas">
       @if (pageType() === 'list' && listBody()) {
         <div class="section-title">
           <h2>Columns</h2>
         </div>
-        <ol class="columns">
+        <ol class="columns" cdkDropList (cdkDropListDropped)="dropColumn($event)">
           @for (column of columns(); track column.fieldName) {
-            <li [class.off]="!column.visible">
-              <label class="check">
-                <p-checkbox [binary]="true" [ngModel]="column.visible" [ngModelOptions]="{ standalone: true }" (ngModelChange)="toggleColumn(column.fieldName)" />
-                <span class="type-badge" [attr.title]="typeTitle(column.fieldName)" [attr.aria-label]="typeTitle(column.fieldName)">
-                  <app-icon [name]="typeIcon(column.fieldName)" />
-                </span>
-                <span>{{ fieldOf(column.fieldName)?.label || column.fieldName }}</span>
-              </label>
-              @if (searchOptions(column.fieldName).length > 1) {
-                <select class="search-mode" [value]="searchOf(column.fieldName)" (change)="setSearch(column.fieldName, $event)">
-                  @for (mode of searchOptions(column.fieldName); track mode) {
-                    <option [value]="mode">{{ searchLabel(mode) }}</option>
+            <li cdkDrag>
+              <app-field-row
+                [label]="fieldOf(column.fieldName)?.label || column.fieldName"
+                [icon]="typeIcon(column.fieldName)"
+                [typeTitle]="typeTitle(column.fieldName)"
+                [off]="!column.visible"
+                [removable]="false"
+                (moveUp)="moveColumn(column.fieldName, -1)"
+                (moveDown)="moveColumn(column.fieldName, 1)">
+                <div options>
+                  <button type="button" class="chip" [class.on]="column.visible" [attr.aria-pressed]="column.visible" (click)="toggleColumn(column.fieldName)">
+                    {{ column.visible ? 'Shown' : 'Hidden' }}
+                  </button>
+                  @if (searchOptions(column.fieldName).length > 1) {
+                    <select class="search-mode" aria-label="Search mode" [value]="searchOf(column.fieldName)" (change)="setSearch(column.fieldName, $event)">
+                      @for (mode of searchOptions(column.fieldName); track mode) {
+                        <option [value]="mode">{{ searchLabel(mode) }}</option>
+                      }
+                    </select>
+                  } @else {
+                    <em>{{ searchLabel(searchOf(column.fieldName)) }}</em>
                   }
-                </select>
-              } @else {
-                <em>{{ searchLabel(searchOf(column.fieldName)) }}</em>
-              }
-              <div class="icon-row">
-                <button type="button" class="icon-btn" aria-label="Move up" title="Move up" (click)="moveColumn(column.fieldName, -1)">
-                  <app-icon name="up" />
-                </button>
-                <button type="button" class="icon-btn" aria-label="Move down" title="Move down" (click)="moveColumn(column.fieldName, 1)">
-                  <app-icon name="down" />
-                </button>
-              </div>
+                </div>
+              </app-field-row>
             </li>
           }
           </ol>
@@ -251,93 +263,113 @@
           }
         </div>
       } @else {
-        <div class="section-title">
-          <h2>Pages</h2>
-          <button type="button" class="icon-btn" aria-label="Add page" title="Add page" (click)="addPage()">
+        <div class="step-tabs" role="tablist" aria-label="Pages">
+          @for (page of wizard()?.pages ?? []; track page.id; let index = $index) {
+            <span class="tab" [class.on]="selectedPage()?.id === page.id">
+              <button type="button" role="tab" class="tab-main" [attr.aria-selected]="selectedPage()?.id === page.id" (click)="selectPage(page.id)">
+                <span class="tab-num">{{ index + 1 }}</span>
+                {{ page.title }}
+              </button>
+              @if (selectedPage()?.id === page.id) {
+                <button type="button" class="tab-edit" aria-label="Edit page" title="Edit page" (click)="openEditPage(page)">
+                  <app-icon name="pencil" />
+                </button>
+              }
+            </span>
+          }
+          <button type="button" class="tab-add" aria-label="Add page" title="Add page" (click)="openAddPage()">
             <app-icon name="plus" />
           </button>
-        </div>
-        <div class="step-tabs">
-          @for (page of wizard()?.pages ?? []; track page.id; let index = $index) {
-            <button type="button" [class.on]="selectedPage()?.id === page.id" (click)="selectPage(page.id)">
-              {{ index + 1 }}. {{ page.title }}
-            </button>
-          }
         </div>
 
         @if (selectedPage(); as page) {
           <div class="page-tools">
-            <input [value]="page.title" (input)="renamePage(page.id, $event)" />
-            <button type="button" class="icon-btn" aria-label="Delete page" title="Delete page" (click)="removePage(page.id)">
-              <app-icon name="trash" />
-            </button>
-            <button type="button" class="icon-btn" aria-label="Add block" title="Add block" (click)="addBox()">
-              <app-icon name="plus" />
-            </button>
+            <button type="button" class="btn" (click)="openAddBlock()"><app-icon name="plus" /> Add block</button>
+            <span class="spacer"></span>
+            <button type="button" class="btn danger" (click)="removePage(page.id)"><app-icon name="trash" /> Delete page</button>
           </div>
+          <div class="boxes">
           @for (box of page.boxes; track box.id) {
             <p-panel [styleClass]="selectedBoxId() === box.id ? 'editor-box on' : 'editor-box'" [toggleable]="true" (click)="selectBox(box.id)">
               <ng-template #header>
                 <span class="editor-box-head">
-                  <input [value]="box.title" (input)="renameBox(box.id, $event)" />
-                  <button type="button" class="icon-btn" aria-label="Delete block" title="Delete block" (click)="removeBox(box.id)">
+                  <strong class="box-name">{{ box.title || 'Untitled block' }}</strong>
+                  <button type="button" class="icon-btn box-edit" aria-label="Edit block title" title="Edit block title" (click)="openEditBlock(box); $event.stopPropagation()">
+                    <app-icon name="pencil" />
+                  </button>
+                  <span class="box-count" [attr.title]="box.fields.length + ' fields'">{{ box.fields.length }}</span>
+                  <button type="button" pButton [text]="true" severity="secondary" size="small" class="box-add" title="Choose a field to add to this block" (click)="openFieldPicker(box.id); $event.stopPropagation()">
+                    <app-icon name="plus" /> Add field
+                  </button>
+                  <button type="button" class="icon-btn box-delete" aria-label="Delete block" title="Delete block" (click)="removeBox(box.id); $event.stopPropagation()">
                     <app-icon name="trash" />
                   </button>
                 </span>
               </ng-template>
-              @if (box.fields.length === 0) {
-                <p class="muted">Click a field on the left to place it in this block.</p>
-              }
-              <ol class="field-board">
+              <div class="block-options" role="group" aria-label="Block options">
+                <span class="muted">{{ box.fields.length }} fields</span>
+                <span class="block-width">
+                  <span class="muted">All fields</span>
+                  <span class="segmented span-picker" role="group" aria-label="All fields in block">
+                    @for (option of spanOptions; track option.value) {
+                      <button type="button" [attr.title]="'All fields: ' + option.title.toLowerCase()" (click)="setBlockSpan(box.id, option.value)">{{ option.label }}</button>
+                    }
+                  </span>
+                </span>
+              </div>
+              <ol class="form-canvas" cdkDropList cdkDropListOrientation="mixed" [cdkDropListData]="box.id" (cdkDropListDropped)="dropField($event)">
                 @for (field of box.fields; track field.fieldName) {
-                  <li class="field-card" [class.span-12]="field.span === 12" [class.span-6]="field.span === 6" [class.span-4]="field.span === 4">
-                    <div class="field-card-name">
-                      <span class="type-badge" [attr.title]="typeTitle(field.fieldName)" [attr.aria-label]="typeTitle(field.fieldName)">
-                        <app-icon [name]="typeIcon(field.fieldName)" />
+                  <li
+                    class="canvas-field"
+                    cdkDrag
+                    [class.span-12]="field.span === 12"
+                    [class.span-6]="field.span === 6"
+                    [class.span-4]="field.span === 4"
+                    [class.sel]="selectedFieldName() === field.fieldName"
+                    (click)="selectField(box.id, field.fieldName); $event.stopPropagation()">
+                    <span class="cf-grip" cdkDragHandle title="Drag to move" aria-label="Drag to move"><app-icon name="grip" /></span>
+                    <div class="cf-body">
+                      <span class="cf-label">
+                        {{ fieldOf(field.fieldName)?.label || field.fieldName }}
+                        @if (field.required) { <b title="Required">*</b> }
+                        @if (field.showIf) { <em title="Conditional"><app-icon name="eye" /></em> }
                       </span>
-                      <strong>{{ fieldOf(field.fieldName)?.label || field.fieldName }}</strong>
-                    </div>
-                    <div class="field-card-options">
-                      @if (pageType() !== 'view') {
-                        <label class="check">
-                          <p-checkbox [binary]="true" [ngModel]="field.required" [ngModelOptions]="{ standalone: true }" (ngModelChange)="toggleRequired(box.id, field.fieldName)" />
-                          <span>Required</span>
-                        </label>
+                      @switch (mockKind(field.fieldName)) {
+                        @case ('check') {
+                          <span class="cf-check"><i></i> {{ typeTitle(field.fieldName) }}</span>
+                        }
+                        @case ('drop') {
+                          <span class="cf-input cf-drop"><app-icon [name]="typeIcon(field.fieldName)" /> Drop or choose a file</span>
+                        }
+                        @case ('area') {
+                          <span class="cf-input cf-area">{{ typeTitle(field.fieldName) }}</span>
+                        }
+                        @case ('map') {
+                          <span class="cf-input cf-map"><app-icon [name]="typeIcon(field.fieldName)" /> {{ typeTitle(field.fieldName) }}</span>
+                        }
+                        @default {
+                          <span class="cf-input">
+                            {{ typeTitle(field.fieldName) }}
+                            <app-icon class="cf-end" [name]="mockKind(field.fieldName) === 'select' ? 'down' : typeIcon(field.fieldName)" />
+                          </span>
+                        }
                       }
-                      <label class="check" title="Shown only when the linked field has a value">
-                        <p-checkbox [binary]="true" [ngModel]="!!field.showIf" [ngModelOptions]="{ standalone: true }" (ngModelChange)="setShowIf(box.id, field.fieldName, $event)" />
-                        <span>Show if</span>
-                      </label>
-                      @if (field.showIf) {
-                        <select class="show-if-select" aria-label="Show if field" (change)="setShowIfField(box.id, field.fieldName, $event)">
-                          <option value="" [selected]="!field.showIfField">Choose</option>
-                          @for (other of showIfChoices(field.fieldName, field.showIfField); track other.name) {
-                            <option [value]="other.name" [selected]="field.showIfField === other.name">{{ other.label || other.name }}</option>
-                          }
-                        </select>
-                      }
-                      <select class="span-select" [value]="field.span" (change)="setSpan(box.id, field.fieldName, $event)">
-                        <option value="12">Full</option>
-                        <option value="6">Half</option>
-                        <option value="4">Third</option>
-                      </select>
-                      <div class="card-actions icon-row">
-                        <button type="button" class="icon-btn" aria-label="Move up" title="Move up" (click)="moveField(box.id, field.fieldName, -1)">
-                          <app-icon name="up" />
-                        </button>
-                        <button type="button" class="icon-btn" aria-label="Move down" title="Move down" (click)="moveField(box.id, field.fieldName, 1)">
-                          <app-icon name="down" />
-                        </button>
-                        <button type="button" class="icon-btn" aria-label="Remove" title="Remove" (click)="removeField(box.id, field.fieldName)">
-                          <app-icon name="minus" />
-                        </button>
-                      </div>
+                      <code>{{ field.fieldName }}</code>
                     </div>
+                    <span class="cf-tools">
+                      <span class="cf-span">{{ field.span === 12 ? 'Full' : field.span === 6 ? '½' : '⅓' }}</span>
+                      <button type="button" class="cf-remove" aria-label="Remove from block" title="Remove from block" (click)="removeField(box.id, field.fieldName); $event.stopPropagation()">
+                        <app-icon name="trash" />
+                      </button>
+                    </span>
                   </li>
+                } @empty {
+                  <li class="canvas-empty">Drag fields here from the right</li>
                 }
               </ol>
             </p-panel>
           }
+          </div>
         }
       }
 
@@ -348,7 +380,176 @@
         <pre class="code">{{ jsonText() }}</pre>
       }
     </section>
+    <div
+      class="side-resizer"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize side panel"
+      title="Drag to resize, double-click to reset"
+      tabindex="0"
+      (pointerdown)="startResize($event, studio)"
+      (keydown)="resizeKey($event)"
+      (dblclick)="resetSide()">
+      <span class="grip"><app-icon name="grip" /></span>
+    </div>
+    <div class="side-pane">
+      @if (pageType() !== 'list') {
+        <div class="inspector">
+          @if (selectedField(); as field) {
+            <h2>
+              <span class="type-badge" [attr.title]="typeTitle(field.fieldName)"><app-icon [name]="typeIcon(field.fieldName)" /></span>
+              {{ fieldOf(field.fieldName)?.label || field.fieldName }}
+            </h2>
+            <div class="insp-group">
+              @if (pageType() !== 'view') {
+                <label class="insp-row">
+                  <span>Required</span>
+                  <button type="button" class="chip" [class.on]="field.required" [attr.aria-pressed]="field.required" (click)="toggleRequired(selectedBoxId()!, field.fieldName)">{{ field.required ? 'On' : 'Off' }}</button>
+                </label>
+              }
+              <label class="insp-row" title="Shown only when the linked field has a value">
+                <span>Show if</span>
+                <button type="button" class="chip" [class.on]="!!field.showIf" [attr.aria-pressed]="!!field.showIf" (click)="setShowIf(selectedBoxId()!, field.fieldName, !field.showIf)">{{ field.showIf ? 'On' : 'Off' }}</button>
+              </label>
+              @if (field.showIf) {
+                <select aria-label="Show if field" (change)="setShowIfField(selectedBoxId()!, field.fieldName, $event)">
+                  <option value="" [selected]="!field.showIfField">Choose field…</option>
+                  @for (other of showIfChoices(field.fieldName, field.showIfField); track other.name) {
+                    <option [value]="other.name" [selected]="field.showIfField === other.name">{{ other.label || other.name }}</option>
+                  }
+                </select>
+              }
+              <div class="insp-row">
+                <span>Width</span>
+                <span class="segmented span-picker" role="group" aria-label="Width">
+                  @for (option of spanOptions; track option.value) {
+                    <button type="button" [class.on]="field.span === option.value" [attr.title]="option.title" (click)="setSpan(selectedBoxId()!, field.fieldName, option.value)">{{ option.label }}</button>
+                  }
+                </span>
+              </div>
+            </div>
+            <button type="button" class="btn" (click)="selectedFieldName.set(null)">Back to block</button>
+          } @else {
+            <h2>Field</h2>
+            <p class="muted">Click a field in the form to edit its options.</p>
+          }
+        </div>
+      }
+      <div class="palette">
+        <h2>Fields</h2>
+        <p class="muted">Click or drag into a block.</p>
+        <ul id="palette-list" cdkDropList cdkDropListSortingDisabled [cdkDropListEnterPredicate]="noEntry">
+          @for (field of fields(); track field.uuid ?? field.name) {
+            <li cdkDrag [cdkDragData]="field.name" [cdkDragDisabled]="pageType() === 'list' || usedNames().has(field.name || '')">
+              <button
+                type="button"
+                [disabled]="pageType() !== 'list' && usedNames().has(field.name || '')"
+                (click)="pageType() === 'list' ? toggleColumn(field.name || '') : addField(field.name || '')">
+                <span class="type-badge" [attr.title]="typeTitle(field.name || '')" [attr.aria-label]="typeTitle(field.name || '')">
+                  <app-icon [name]="typeIcon(field.name || '')" />
+                </span>
+                <strong>{{ field.label || field.name }}</strong>
+              </button>
+            </li>
+          }
+        </ul>
+      </div>
+    </div>
   </div>
+  @if (pageDialog(); as dialog) {
+    <div class="sheet-back" (click)="pageDialog.set(null)">
+      <form class="sheet settings-sheet" role="dialog" aria-modal="true" [attr.aria-label]="dialog.mode === 'add' ? 'Add page' : 'Edit page'" (click)="$event.stopPropagation()" (submit)="$event.preventDefault(); confirmPageDialog(pageTitle.value)">
+        <header>
+          <strong>{{ dialog.mode === 'add' ? 'Add page' : 'Edit page' }}</strong>
+          <button type="button" class="icon-btn" aria-label="Close" title="Close" (click)="pageDialog.set(null)">
+            <app-icon name="close" />
+          </button>
+        </header>
+        <div class="settings-form">
+          <label>
+            Page name
+            <input #pageTitle [value]="dialog.title" autofocus />
+          </label>
+        </div>
+        <div class="dialog-actions">
+          <button type="button" class="btn" (click)="pageDialog.set(null)">Cancel</button>
+          <button type="submit" class="btn btn-primary">{{ dialog.mode === 'add' ? 'Add page' : 'Save' }}</button>
+        </div>
+      </form>
+    </div>
+  }
+  @if (blockDialog(); as dialog) {
+    <div class="sheet-back" (click)="blockDialog.set(null)">
+      <form class="sheet settings-sheet" role="dialog" aria-modal="true" [attr.aria-label]="dialog.mode === 'add' ? 'Add block' : 'Edit block'" (click)="$event.stopPropagation()" (submit)="$event.preventDefault(); confirmBlockDialog(blockTitle.value)">
+        <header>
+          <strong>{{ dialog.mode === 'add' ? 'Add block' : 'Edit block' }}</strong>
+          <button type="button" class="icon-btn" aria-label="Close" title="Close" (click)="blockDialog.set(null)">
+            <app-icon name="close" />
+          </button>
+        </header>
+        <div class="settings-form">
+          <label>
+            Block title
+            <input #blockTitle [value]="dialog.title" autofocus />
+          </label>
+        </div>
+        <div class="dialog-actions">
+          <button type="button" class="btn" (click)="blockDialog.set(null)">Cancel</button>
+          <button type="submit" class="btn btn-primary">{{ dialog.mode === 'add' ? 'Add block' : 'Save' }}</button>
+        </div>
+      </form>
+    </div>
+  }
+  @if (fieldPicker(); as picker) {
+    <div class="sheet-back" (click)="fieldPicker.set(null)">
+      <section class="sheet settings-sheet picker-sheet" role="dialog" aria-modal="true" aria-label="Add field" (click)="$event.stopPropagation()">
+        <header>
+          <strong>Add a field</strong>
+          <button type="button" class="icon-btn" aria-label="Close" title="Close" (click)="fieldPicker.set(null)">
+            <app-icon name="close" />
+          </button>
+        </header>
+        <input
+          class="picker-search"
+          placeholder="Search fields…"
+          aria-label="Search fields"
+          autofocus
+          [value]="picker.query"
+          (input)="setPickerQuery($event)"
+          (keydown.enter)="pickableFields()[0] && pickField(pickableFields()[0].name || '')" />
+        <ul class="picker-list">
+          @for (field of pickableFields(); track field.uuid ?? field.name) {
+            <li>
+              <button type="button" (click)="pickField(field.name || '')">
+                <span class="type-badge" [attr.title]="typeTitle(field.name || '')"><app-icon [name]="typeIcon(field.name || '')" /></span>
+                <span class="picker-name">{{ field.label || field.name }}</span>
+                <code>{{ field.name }}</code>
+              </button>
+            </li>
+          } @empty {
+            <li class="picker-empty muted">{{ picker.query ? 'No field matches.' : 'All fields are already placed.' }}</li>
+          }
+        </ul>
+      </section>
+    </div>
+  }
+  @if (confirmDialog(); as dialog) {
+    <div class="sheet-back" (click)="closeConfirm(false)">
+      <section class="sheet settings-sheet" role="alertdialog" aria-modal="true" [attr.aria-label]="dialog.title" (click)="$event.stopPropagation()">
+        <header>
+          <strong>{{ dialog.title }}</strong>
+          <button type="button" class="icon-btn" aria-label="Close" title="Close" (click)="closeConfirm(false)">
+            <app-icon name="close" />
+          </button>
+        </header>
+        <p class="confirm-text">{{ dialog.message }}</p>
+        <div class="dialog-actions">
+          <button type="button" class="btn" (click)="closeConfirm(false)">Cancel</button>
+          <button type="button" class="btn" [class.btn-danger]="dialog.danger" [class.btn-primary]="!dialog.danger" (click)="closeConfirm(true)">{{ dialog.confirmLabel }}</button>
+        </div>
+      </section>
+    </div>
+  }
   @if (conditionsOpen()) {
     <div class="sheet-back" (click)="conditionsOpen.set(false)">
       <section class="sheet" role="dialog" aria-modal="true" aria-label="Query conditions" (click)="$event.stopPropagation()">

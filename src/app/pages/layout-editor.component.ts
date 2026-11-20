@@ -1,7 +1,10 @@
 import { httpResource } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
+import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
+import { ButtonDirective } from '@openng/optimus-ui/button';
 import { CheckboxModule } from '@openng/optimus-ui/checkbox';
 import { PanelModule } from '@openng/optimus-ui/panel';
 import { defaultSpan, FIELD_TYPE_CATALOG, fieldTypeIcon, logicalFieldType } from '../core/field-types';
@@ -26,8 +29,15 @@ import { conditionNeedsValue, QUERY_CONDITIONS } from '../core/query-conditions'
 import { LayoutStore } from '../core/layout-store';
 import { MetadataCatalog } from '../core/metadata-catalog';
 import { SnelloApi } from '../core/snello-api';
+import { ToastService } from '../core/toast';
+import { FieldRow } from '../field-row';
 import { Icon } from '../icon';
+import { PageBar } from '../page-bar';
 import { MetaIcon } from '../meta-icon';
+
+const SIDE_KEY = 'studio-side-width';
+const SIDE_DEFAULT = 280;
+const clampSide = (width: number) => Math.min(560, Math.max(220, Math.round(width)));
 
 interface LayoutDraft {
   kind: PageKind;
@@ -37,8 +47,9 @@ interface LayoutDraft {
 
 @Component({
   selector: 'app-layout-editor',
-  imports: [RouterLink, FormsModule, CheckboxModule, PanelModule, Icon, MetaIcon],
+  imports: [NgTemplateOutlet, CdkDrag, CdkDropList, CdkDropListGroup, ButtonDirective, FormsModule, CheckboxModule, PanelModule, FieldRow, Icon, MetaIcon, PageBar],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '[class.embedded]': 'embedded()' },
   templateUrl: './layout-editor.component.html',
 })
 export class LayoutEditorComponent {
@@ -49,6 +60,8 @@ export class LayoutEditorComponent {
   private readonly boundRoute = signal<string | null>(null);
 
   readonly id = input<string>();
+  /** True when shown inside another page (the library split view) instead of on its own route. */
+  readonly embedded = input(false);
   readonly metadata = input<string>();
   readonly page = input<string>();
 
@@ -61,6 +74,16 @@ export class LayoutEditorComponent {
   readonly pendingSeed = signal(false);
   readonly saved = signal(false);
   readonly viewNotice = signal('');
+  private readonly toasts = inject(ToastService);
+  private readonly notify = effect(() => {
+    const message = this.viewNotice() || (this.saved() ? 'Layout saved.' : '');
+    if (!message) return;
+    this.toasts.show(message);
+    untracked(() => {
+      this.saved.set(false);
+      this.viewNotice.set('');
+    });
+  });
   readonly saving = signal(false);
   readonly loadError = signal('');
   readonly showJson = signal(false);
@@ -98,9 +121,51 @@ export class LayoutEditorComponent {
   });
   readonly customFilters = computed(() => this.listBody()?.filters ?? []);
   readonly conditionsOpen = signal(false);
+  readonly settingsOpen = signal(false);
   readonly queryConditions = QUERY_CONDITIONS;
   readonly filterTypes: CustomFilterType[] = ['string', 'boolean', 'date', 'numeric'];
 
+  readonly sideWidth = signal(clampSide(Number(localStorage.getItem(SIDE_KEY)) || SIDE_DEFAULT));
+
+  startResize(event: PointerEvent, studio: HTMLElement): void {
+    event.preventDefault();
+    const handle = event.currentTarget as HTMLElement;
+    handle.setPointerCapture(event.pointerId);
+    const right = studio.getBoundingClientRect().right;
+    const move = (moveEvent: PointerEvent) => this.sideWidth.set(clampSide(right - moveEvent.clientX));
+    const stop = () => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', stop);
+      handle.removeEventListener('pointercancel', stop);
+      localStorage.setItem(SIDE_KEY, String(this.sideWidth()));
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', stop);
+    handle.addEventListener('pointercancel', stop);
+  }
+
+  resizeKey(event: KeyboardEvent): void {
+    const step = event.key === 'ArrowLeft' ? 16 : event.key === 'ArrowRight' ? -16 : 0;
+    if (!step) return;
+    event.preventDefault();
+    this.sideWidth.update((width) => clampSide(width + step));
+    localStorage.setItem(SIDE_KEY, String(this.sideWidth()));
+  }
+
+  resetSide(): void {
+    this.sideWidth.set(SIDE_DEFAULT);
+    localStorage.setItem(SIDE_KEY, String(SIDE_DEFAULT));
+  }
+
+  readonly selectedFieldName = signal<string | null>(null);
+  readonly selectedField = computed(() => {
+    const name = this.selectedFieldName();
+    return name ? (this.activeBox()?.fields.find((field) => field.fieldName === name) ?? null) : null;
+  });
+  readonly activeBox = computed(() => {
+    const boxes = this.selectedPage()?.boxes ?? [];
+    return boxes.find((box) => box.id === this.selectedBoxId()) ?? boxes[0] ?? null;
+  });
   readonly selectedPage = computed(() => {
     const wizard = this.wizard();
     if (!wizard) return null;
@@ -199,13 +264,41 @@ export class LayoutEditorComponent {
     this.viewNotice.set('');
   }
 
+  readonly confirmDialog = signal<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    danger: boolean;
+    action: () => void;
+    cancel?: () => void;
+  } | null>(null);
+
+  closeConfirm(confirmed: boolean): void {
+    const dialog = this.confirmDialog();
+    this.confirmDialog.set(null);
+    if (!dialog) return;
+    if (confirmed) dialog.action();
+    else dialog.cancel?.();
+  }
+
   onMetadata(select: HTMLSelectElement): void {
     const name = select.value;
     if (name === this.metadataName()) return;
-    if (this.metadataName() && placementNames(this.body()).length && !window.confirm('Changing metadata rebuilds the layout. Continue?')) {
-      select.value = this.metadataName();
+    if (this.metadataName() && placementNames(this.body()).length) {
+      this.confirmDialog.set({
+        title: 'Change metadata?',
+        message: 'Changing metadata rebuilds the layout.',
+        confirmLabel: 'Continue',
+        danger: false,
+        action: () => this.applyMetadata(name),
+        cancel: () => (select.value = this.metadataName()),
+      });
       return;
     }
+    this.applyMetadata(name);
+  }
+
+  private applyMetadata(name: string): void {
     this.metadataName.set(name);
     this.saved.set(false);
     this.viewNotice.set('');
@@ -219,7 +312,20 @@ export class LayoutEditorComponent {
   setPageType(kind: PageKind): void {
     if (kind === this.pageType()) return;
     const crossing = (kind === 'list') !== (this.pageType() === 'list');
-    if (crossing && this.metadataName() && !window.confirm('Switching between list and form rebuilds the body. Continue?')) return;
+    if (crossing && this.metadataName()) {
+      this.confirmDialog.set({
+        title: 'Switch layout type?',
+        message: 'Switching between list and form rebuilds the body.',
+        confirmLabel: 'Continue',
+        danger: false,
+        action: () => this.applyPageType(kind, crossing),
+      });
+      return;
+    }
+    this.applyPageType(kind, crossing);
+  }
+
+  private applyPageType(kind: PageKind, crossing: boolean): void {
     this.pageType.set(kind);
     this.saved.set(false);
     this.viewNotice.set('');
@@ -238,6 +344,17 @@ export class LayoutEditorComponent {
 
   typeIcon(name: string): string {
     return fieldTypeIcon(this.typeOf(name));
+  }
+
+  mockKind(name: string): 'area' | 'check' | 'drop' | 'select' | 'date' | 'map' | 'input' {
+    const type = this.typeOf(name);
+    if (['text', 'tinymce', 'monaco'].includes(type)) return 'area';
+    if (['boolean', 'passivation'].includes(type)) return 'check';
+    if (['media', 'image'].includes(type)) return 'drop';
+    if (['select', 'multiselect', 'tags', 'join', 'lookup', 'multijoin', 'multilookup', 'realtionships'].includes(type)) return 'select';
+    if (['date', 'datetime', 'time'].includes(type)) return 'date';
+    if (['gmaplocation', 'gmappath'].includes(type)) return 'map';
+    return 'input';
   }
 
   typeTitle(name: string): string {
@@ -272,6 +389,42 @@ export class LayoutEditorComponent {
         column.fieldName === name ? { ...column, visible: !column.visible } : column,
       );
     });
+  }
+
+  setBlockSpan(boxId: string, span: 4 | 6 | 12): void {
+    this.patchWizard((body) => {
+      const box = body.pages.flatMap((page) => page.boxes).find((item) => item.id === boxId);
+      box?.fields.forEach((field) => (field.span = span));
+    });
+  }
+
+  dropColumn(event: CdkDragDrop<unknown>): void {
+    if (event.previousIndex === event.currentIndex) return;
+    this.patchList((body) => {
+      const ordered = orderedColumns(body);
+      moveItemInArray(ordered, event.previousIndex, event.currentIndex);
+      body.columns = ordered.map((column, order) => ({ ...column, order }));
+    });
+  }
+
+  dropField(event: CdkDragDrop<string>): void {
+    if (event.previousContainer.id === 'palette-list') {
+      this.addField(event.item.data as string, event.container.data, event.currentIndex);
+      this.selectedBoxId.set(event.container.data);
+      return;
+    }
+    const fromId = event.previousContainer.data;
+    const toId = event.container.data;
+    if (fromId === toId && event.previousIndex === event.currentIndex) return;
+    this.patchWizard((body) => {
+      const boxes = body.pages.flatMap((page) => page.boxes);
+      const from = boxes.find((item) => item.id === fromId);
+      const to = boxes.find((item) => item.id === toId);
+      if (!from || !to) return;
+      if (from === to) moveItemInArray(from.fields, event.previousIndex, event.currentIndex);
+      else transferArrayItem(from.fields, to.fields, event.previousIndex, event.currentIndex);
+    });
+    this.selectedBoxId.set(toId);
   }
 
   moveColumn(name: string, direction: -1 | 1): void {
@@ -380,23 +533,37 @@ export class LayoutEditorComponent {
     this.patchCondition(filterId, conditionId, { value: (event.target as HTMLInputElement | HTMLSelectElement).value });
   }
 
-  addPage(): void {
+  readonly pageDialog = signal<{ mode: 'add' | 'edit'; id: string; title: string } | null>(null);
+
+  openAddPage(): void {
+    this.pageDialog.set({ mode: 'add', id: '', title: `Page ${(this.wizard()?.pages.length ?? 0) + 1}` });
+  }
+
+  openEditPage(page: LayoutPage): void {
+    this.pageDialog.set({ mode: 'edit', id: page.id, title: page.title });
+  }
+
+  confirmPageDialog(title: string): void {
+    const dialog = this.pageDialog();
+    if (!dialog) return;
+    const clean = title.trim() || dialog.title;
+    if (dialog.mode === 'add') this.addPage(clean);
+    else this.patchWizard((body) => {
+      const page = body.pages.find((item) => item.id === dialog.id);
+      if (page) page.title = clean;
+    });
+    this.pageDialog.set(null);
+  }
+
+  addPage(title?: string): void {
     const page: LayoutPage = {
       id: crypto.randomUUID(),
-      title: `Page ${(this.wizard()?.pages.length ?? 0) + 1}`,
+      title: title ?? `Page ${(this.wizard()?.pages.length ?? 0) + 1}`,
       boxes: [{ id: crypto.randomUUID(), title: 'Block', fields: [] }],
     };
     this.patchWizard((body) => body.pages.push(page));
     this.selectedPageId.set(page.id);
     this.selectedBoxId.set(page.boxes[0]?.id ?? null);
-  }
-
-  renamePage(id: string, event: Event): void {
-    const title = (event.target as HTMLInputElement).value;
-    this.patchWizard((body) => {
-      const page = body.pages.find((item) => item.id === id);
-      if (page) page.title = title;
-    });
   }
 
   selectPage(id: string): void {
@@ -407,67 +574,138 @@ export class LayoutEditorComponent {
 
   removePage(id: string): void {
     const title = this.wizard()?.pages.find((page) => page.id === id)?.title || 'this page';
-    if (!window.confirm(`Delete “${title}”?`)) return;
-    this.patchWizard((body) => {
-      body.pages = body.pages.filter((page) => page.id !== id);
+    this.confirmDialog.set({
+      title: `Delete “${title}”?`,
+      message: 'The page and all its blocks and fields are removed from this layout.',
+      confirmLabel: 'Delete page',
+      danger: true,
+      action: () => {
+        this.patchWizard((body) => {
+          body.pages = body.pages.filter((page) => page.id !== id);
+        });
+        this.selectedPageId.set(this.wizard()?.pages[0]?.id ?? null);
+        this.selectedBoxId.set(this.wizard()?.pages[0]?.boxes[0]?.id ?? null);
+      },
     });
-    this.selectedPageId.set(this.wizard()?.pages[0]?.id ?? null);
-    this.selectedBoxId.set(this.wizard()?.pages[0]?.boxes[0]?.id ?? null);
   }
 
-  addBox(): void {
+  addBox(title = 'Block'): void {
     const pageId = this.selectedPage()?.id;
     if (!pageId) return;
-    const box: LayoutBox = { id: crypto.randomUUID(), title: 'Block', fields: [] };
+    const box: LayoutBox = { id: crypto.randomUUID(), title, fields: [] };
     this.patchWizard((body) => {
       body.pages.find((page) => page.id === pageId)?.boxes.push(box);
     });
     this.selectedBoxId.set(box.id);
   }
 
-  renameBox(id: string, event: Event): void {
-    const title = (event.target as HTMLInputElement).value;
-    this.patchWizard((body) => {
-      for (const page of body.pages) {
-        const box = page.boxes.find((item) => item.id === id);
-        if (box) box.title = title;
-      }
+  readonly fieldPicker = signal<{ boxId: string; query: string } | null>(null);
+
+  /** Fields not placed yet, filtered by the picker's search text. */
+  readonly pickableFields = computed(() => {
+    const picker = this.fieldPicker();
+    if (!picker) return [];
+    const query = picker.query.trim().toLowerCase();
+    const used = this.usedNames();
+    return this.fields().filter((field) => {
+      const name = field.name ?? '';
+      if (!name || used.has(name)) return false;
+      return !query || name.toLowerCase().includes(query) || (field.label ?? '').toLowerCase().includes(query);
     });
+  });
+
+  openFieldPicker(boxId: string): void {
+    this.selectedBoxId.set(boxId);
+    this.fieldPicker.set({ boxId, query: '' });
+  }
+
+  setPickerQuery(event: Event): void {
+    const picker = this.fieldPicker();
+    if (picker) this.fieldPicker.set({ ...picker, query: (event.target as HTMLInputElement).value });
+  }
+
+  pickField(name: string): void {
+    const picker = this.fieldPicker();
+    if (!picker) return;
+    this.addField(name, picker.boxId);
+    this.selectedBoxId.set(picker.boxId);
+    this.selectedFieldName.set(name);
+    this.fieldPicker.set(null);
+  }
+
+  readonly blockDialog = signal<{ mode: 'add' | 'edit'; id: string; title: string } | null>(null);
+
+  openEditBlock(box: LayoutBox): void {
+    this.blockDialog.set({ mode: 'edit', id: box.id, title: box.title });
+  }
+
+  openAddBlock(): void {
+    const count = this.selectedPage()?.boxes.length ?? 0;
+    this.blockDialog.set({ mode: 'add', id: '', title: `Block ${count + 1}` });
+  }
+
+  confirmBlockDialog(title: string): void {
+    const dialog = this.blockDialog();
+    if (!dialog) return;
+    const clean = title.trim() || dialog.title;
+    if (dialog.mode === 'add') this.addBox(clean);
+    else
+      this.patchWizard((body) => {
+        for (const page of body.pages) {
+          const box = page.boxes.find((item) => item.id === dialog.id);
+          if (box) box.title = clean;
+        }
+      });
+    this.blockDialog.set(null);
+  }
+
+  selectField(boxId: string, name: string): void {
+    this.selectedBoxId.set(boxId);
+    this.selectedFieldName.set(name);
   }
 
   selectBox(id: string): void {
+    if (this.selectedBoxId() !== id) this.selectedFieldName.set(null);
     this.selectedBoxId.set(id);
   }
 
   removeBox(id: string): void {
     const title = this.wizard()?.pages.flatMap((page) => page.boxes).find((box) => box.id === id)?.title || 'this block';
-    if (!window.confirm(`Delete “${title}”?`)) return;
-    this.patchWizard((body) => {
-      for (const page of body.pages) page.boxes = page.boxes.filter((box) => box.id !== id);
+    this.confirmDialog.set({
+      title: `Delete “${title}”?`,
+      message: 'The block and its fields are removed from this layout.',
+      confirmLabel: 'Delete block',
+      danger: true,
+      action: () =>
+        this.patchWizard((body) => {
+          for (const page of body.pages) page.boxes = page.boxes.filter((box) => box.id !== id);
+        }),
     });
   }
 
-  addField(name: string): void {
+  addField(name: string, targetBoxId?: string, index?: number): void {
     if (this.usedNames().has(name)) return;
     const page = this.selectedPage();
     if (!page) return;
     const boxId = this.selectedBoxId() ?? page.boxes[0]?.id;
-    if (!boxId) {
+    if (!boxId && !targetBoxId) {
       this.addBox();
     }
-    const target = this.selectedBoxId() ?? boxId;
+    const target = targetBoxId ?? this.selectedBoxId() ?? boxId;
     if (!target) return;
     const definition = this.fieldOf(name);
     this.patchWizard((body) => {
       const box = body.pages.flatMap((item) => item.boxes).find((item) => item.id === target);
       if (!box || box.fields.some((field) => field.fieldName === name)) return;
-      box.fields.push({
+      box.fields.splice(index ?? box.fields.length, 0, {
         fieldName: name,
         required: !!definition?.mandatory,
         span: definition ? defaultSpan(definition) : 4,
       });
     });
   }
+
+  readonly noEntry = () => false;
 
   toggleRequired(boxId: string, name: string): void {
     this.patchWizard((body) => {
@@ -505,9 +743,13 @@ export class LayoutEditorComponent {
     });
   }
 
-  setSpan(boxId: string, name: string, event: Event): void {
-    const raw = (event.target as HTMLSelectElement).value;
-    const span = raw === '4' ? 4 : raw === '6' ? 6 : 12;
+  readonly spanOptions: { value: 4 | 6 | 12; label: string; title: string }[] = [
+    { value: 12, label: 'Full', title: 'Full row' },
+    { value: 6, label: '½', title: 'Half row' },
+    { value: 4, label: '⅓', title: 'Third of a row' },
+  ];
+
+  setSpan(boxId: string, name: string, span: 4 | 6 | 12): void {
     this.patchWizard((body) => {
       const field = body.pages.flatMap((page) => page.boxes).find((box) => box.id === boxId)?.fields.find((item) => item.fieldName === name);
       if (field) field.span = span;
@@ -530,9 +772,19 @@ export class LayoutEditorComponent {
   }
 
   removeField(boxId: string, name: string): void {
-    this.patchWizard((body) => {
-      const box = body.pages.flatMap((page) => page.boxes).find((item) => item.id === boxId);
-      if (box) box.fields = box.fields.filter((field) => field.fieldName !== name);
+    const label = this.fieldOf(name)?.label || name;
+    this.confirmDialog.set({
+      title: `Remove “${label}”?`,
+      message: 'The field is taken out of this block. You can add it again later from the field list.',
+      confirmLabel: 'Remove field',
+      danger: true,
+      action: () => {
+        this.patchWizard((body) => {
+          const box = body.pages.flatMap((page) => page.boxes).find((item) => item.id === boxId);
+          if (box) box.fields = box.fields.filter((field) => field.fieldName !== name);
+        });
+        if (this.selectedFieldName() === name) this.selectedFieldName.set(null);
+      },
     });
   }
 
@@ -574,6 +826,26 @@ export class LayoutEditorComponent {
       });
     }
     void this.persist(created);
+  }
+
+  /** True when the editor differs from the saved layout (or the layout was never saved). */
+  readonly dirty = computed(() => {
+    const id = this.id();
+    const stored = id ? this.store.all().find((item) => item.id === id) : undefined;
+    if (!stored) return true;
+    const snapshot = (doc: { name: string; pageType: string; metadataName: string; body: unknown }) =>
+      JSON.stringify([doc.name, doc.pageType, doc.metadataName, doc.body]);
+    return (
+      snapshot(stored) !==
+      snapshot({ name: this.name().trim() || stored.name, pageType: this.pageType(), metadataName: this.metadataName(), body: this.body() })
+    );
+  });
+
+  @HostListener('document:keydown', ['$event'])
+  saveShortcut(event: KeyboardEvent): void {
+    if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 's') return;
+    event.preventDefault();
+    if (this.id() && this.dirty()) this.save();
   }
 
   save(): void {
@@ -624,6 +896,7 @@ export class LayoutEditorComponent {
 
   private async persist(documents: LayoutDocument[]): Promise<void> {
     this.loadError.set('');
+    this.saving.set(true);
     try {
       const saved: LayoutDocument[] = [];
       for (const document of documents) saved.push(await this.store.save(document));
@@ -631,6 +904,7 @@ export class LayoutEditorComponent {
       if (!target) return;
       this.saved.set(true);
       this.boundRoute.set(target.id);
+      if (this.embedded()) return;
       if (documents.length > 1) {
         void this.router.navigate(['/layouts']);
         return;
@@ -638,6 +912,8 @@ export class LayoutEditorComponent {
       void this.router.navigate(['/layouts', target.id], { replaceUrl: true });
     } catch {
       this.loadError.set("Can't save the layout.");
+    } finally {
+      this.saving.set(false);
     }
   }
 

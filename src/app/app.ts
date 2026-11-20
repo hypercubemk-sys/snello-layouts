@@ -5,7 +5,10 @@ import Keycloak from 'keycloak-js';
 import { filter, map } from 'rxjs';
 import { LayoutStore } from './core/layout-store';
 import { Session } from './core/session';
+import { AiPanel } from './ai-panel';
+import { AiPanelState } from './core/ai-panel-state';
 import { Icon } from './icon';
+import { Toast } from './toast';
 import { HelpDialog } from './help/help-dialog';
 import { APP_VERSION } from './version';
 
@@ -16,7 +19,7 @@ interface Crumb {
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, HelpDialog],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, HelpDialog, AiPanel, Toast],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './app.html',
 })
@@ -36,6 +39,7 @@ export class App {
   readonly menuOpen = signal(false);
   readonly userOpen = signal(false);
   readonly helpOpen = signal(false);
+  readonly ai = inject(AiPanelState);
   readonly profile = this.session.user;
   readonly version = APP_VERSION;
 
