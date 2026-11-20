@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, HostListener, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, HostListener, input, output, signal } from '@angular/core';
 import { HelpSection, Inline, parseDocument } from './markdown';
 import { Icon } from '../icon';
 
@@ -17,6 +17,23 @@ interface DocEntry {
 })
 export class HelpDialog {
   readonly closed = output<void>();
+  /** Shown inline (for the AI panel) instead of as a modal sheet. */
+  readonly embedded = input(false);
+  private readonly openIds = signal<ReadonlySet<string>>(new Set());
+
+  /** Inline help is an accordion: topics are closed until clicked, or while searching. */
+  isOpen(section: HelpSection): boolean {
+    if (!this.embedded()) return true;
+    return !!this.query().trim() || section.heading === section.document || this.openIds().has(section.id);
+  }
+
+  toggle(id: string): void {
+    this.openIds.update((set) => {
+      const next = new Set(set);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  }
   readonly query = signal('');
   readonly status = signal<'loading' | 'ready' | 'error'>('loading');
   readonly sections = signal<HelpSection[]>([]);

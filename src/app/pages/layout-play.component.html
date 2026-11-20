@@ -9,84 +9,115 @@
   </section>
 } @else {
   @if (!embedded()) {
-  <section class="page-head">
-    <div>
-      <p class="kicker with-icon">
-        <app-meta-icon [icon]="metadatas.icon(layout()?.metadataName || '')" [label]="layout()?.metadataName || ''" />
-        <span>{{ layout()?.metadataName }} · {{ layout()?.pageType }}</span>
-      </p>
-      <h1>{{ layout()?.name }}</h1>
-    </div>
-    <div class="icon-row">
-      @if (layout()?.pageType === 'list' && createLayout(); as edit) {
-        <button type="button" class="icon-btn btn-primary" aria-label="New record" title="New record" (click)="openWindow('edit', '')">
-          <app-icon name="plus" />
+  <app-page-bar [kicker]="(layout()?.metadataName || '') + ' · ' + (layout()?.pageType || '')" [title]="layout()?.name || ''" [flush]="layout()?.pageType === 'list'">
+    <app-meta-icon bar-icon [icon]="metadatas.icon(layout()?.metadataName || '')" [label]="layout()?.metadataName || ''" />
+      @if (layout()?.pageType === 'list') {
+        <p-selectbutton
+          class="view-toggle"
+          size="small"
+          aria-label="View"
+          [options]="viewOptions"
+          optionLabel="label"
+          optionValue="value"
+          [allowEmpty]="false"
+          [ngModel]="view()"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="setView($event)">
+          <ng-template #item let-item>
+            <app-icon [name]="item.icon" />
+            <span class="view-label">{{ item.label }}</span>
+          </ng-template>
+        </p-selectbutton>
+        <span class="bar-sep" aria-hidden="true"></span>
+        <div class="tool-pop" (click)="$event.stopPropagation()">
+          <button type="button" pButton [text]="!columnsOpen()" severity="secondary" size="small" class="bar-action columns-toggle" aria-label="Visible fields" title="Visible fields" [attr.aria-expanded]="columnsOpen()" (click)="toggleColumns()">
+            <app-icon name="sliders" /> Columns
+          </button>
+          @if (columnsOpen()) {
+            <div class="column-pop">
+              <div class="icon-row">
+                <button type="button" class="text-btn" (click)="selectAllColumns()">Select all</button>
+                <button type="button" class="text-btn" (click)="clearColumns()">Clear all</button>
+              </div>
+              <ul>
+                @for (column of columnChoices(); track column.fieldName) {
+                  <li>
+                    <label>
+                      <p-checkbox [binary]="true" [ngModel]="columnOn(column.fieldName)" [ngModelOptions]="{ standalone: true }" (ngModelChange)="toggleColumn(column.fieldName)" />
+                      <span>{{ fieldLabel(column.fieldName) }}</span>
+                    </label>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+        </div>
+        <button
+          type="button"
+          pButton
+          [text]="!filtersOpen()"
+          severity="secondary"
+          size="small"
+          class="bar-action filters-btn"
+          [attr.aria-expanded]="filtersOpen()"
+          title="Show or hide the filters"
+          (click)="filtersOpen.set(!filtersOpen())">
+          <app-icon name="filter" /> Filters
+          @if (appliedFilters().length) {
+            <span class="filters-count">{{ appliedFilters().length }}</span>
+          }
         </button>
+        @if (createLayout(); as edit) {
+          <span class="bar-sep" aria-hidden="true"></span>
+          <button type="button" pButton severity="contrast" size="small" class="bar-action" title="Add a new record" (click)="openWindow('edit', '')">
+            <app-icon name="plus" /> Add new
+          </button>
+        }
       }
       @if (openedAt() !== '/data') {
-        <a class="icon-btn" [routerLink]="['/layouts', layout()?.id]" aria-label="Edit layout" title="Edit layout"><app-icon name="pencil" /></a>
+        <a pButton [text]="true" size="small" severity="secondary" class="bar-icon-btn" [routerLink]="['/layouts', layout()?.id]" aria-label="Edit layout" title="Edit layout"><app-icon name="pencil" /></a>
       }
-    </div>
-  </section>
+  </app-page-bar>
   }
 
   @if (layout()?.pageType === 'list' && layout()?.body?.kind === 'list') {
-    <section class="filters" [class.is-open]="filtersOpen()" (click)="!filtersOpen() && filtersOpen.set(true)">
-      <div class="section-title">
-        <h2>
-          <button type="button" class="filter-bar" [attr.aria-expanded]="filtersOpen()" [attr.title]="filtersOpen() ? 'Close filters' : 'Open filters'" (click)="$event.stopPropagation(); filtersOpen.set(!filtersOpen())">
-            <span>Filters</span>
-            <span class="icon-btn" aria-hidden="true"><app-icon name="filter" /></span>
-          </button>
-        </h2>
-        <div class="icon-row">
-          <div class="tool-pop" (click)="$event.stopPropagation()">
-            <button type="button" class="icon-btn columns-toggle" aria-label="Visible fields" title="Visible fields" [attr.aria-expanded]="columnsOpen()" (click)="toggleColumns()">
-              <app-icon name="sliders" />
-            </button>
-            @if (columnsOpen()) {
-              <div class="column-pop">
-                <div class="icon-row">
-                  <button type="button" class="text-btn" (click)="selectAllColumns()">Select all</button>
-                  <button type="button" class="text-btn" (click)="clearColumns()">Clear all</button>
-                </div>
-                <ul>
-                  @for (column of columnChoices(); track column.fieldName) {
-                    <li>
-                      <label>
-                        <p-checkbox [binary]="true" [ngModel]="columnOn(column.fieldName)" [ngModelOptions]="{ standalone: true }" (ngModelChange)="toggleColumn(column.fieldName)" />
-                        <span>{{ fieldLabel(column.fieldName) }}</span>
-                      </label>
-                    </li>
-                  }
-                </ul>
-              </div>
-            }
+    <div class="data-split" #split [class.no-side]="!filtersOpen()" [class.is-split]="view() === 'split'" [style.--dock-w.px]="dockWidth()">
+      @if (filtersOpen()) {
+      <div class="data-side" aria-label="Filters">
+        <div class="side-head">
+          <h2><app-icon name="filter" /> Filters</h2>
+          <div class="icon-row">
+            <button type="button" class="icon-btn" aria-label="Clear filters" title="Clear filters" [disabled]="!appliedFilters().length" (click)="clearFilters()"><app-icon name="close" /></button>
           </div>
         </div>
-      </div>
-      @if (!filtersOpen() && appliedFilters().length) {
-        <ul class="applied">
-          @for (item of appliedFilters(); track item.name) {
-            <li><span>{{ item.label }}</span><strong>{{ item.value }}</strong></li>
-          }
-        </ul>
-      }
-      @if (filtersOpen()) {
+        @if (appliedFilters().length) {
+          <ul class="applied">
+            @for (item of appliedFilters(); track item.name) {
+              <li><span>{{ item.label }}</span><strong>{{ item.value }}</strong></li>
+            }
+          </ul>
+        }
         @if (filterFields().length === 0) {
           <p class="muted">This metadata has no filterable fields.</p>
         } @else {
-          <form [formGroup]="filterForm()" (ngSubmit)="applyFilters()" (click)="$event.stopPropagation()">
+          <form [formGroup]="filterForm()" (ngSubmit)="applyFilters()">
             <formly-form class="filter-grid" [form]="filterForm()" [fields]="filterFields()" [model]="filterModel" />
             <div class="row-actions">
-              <button type="submit" class="icon-btn btn-primary" aria-label="Apply" title="Apply"><app-icon name="check" /></button>
-              <button type="button" class="icon-btn" aria-label="Clear" title="Clear" (click)="clearFilters()"><app-icon name="close" /></button>
+              <button type="submit" pButton size="small" severity="contrast"><app-icon name="check" /> Apply</button>
+              <button type="button" pButton [text]="true" size="small" severity="secondary" (click)="clearFilters()">Clear</button>
             </div>
           </form>
         }
+      </div>
       }
-    </section>
-
+      <div class="data-main">
+        @if (!filtersOpen() && appliedFilters().length) {
+          <ul class="applied data-applied">
+            @for (item of appliedFilters(); track item.name) {
+              <li><span>{{ item.label }}</span><strong>{{ item.value }}</strong></li>
+            }
+          </ul>
+        }
     <section class="table-wrap">
       @if (rows.isLoading()) {
         <div class="section-title">
@@ -96,74 +127,93 @@
       @if (rows.status() === 'error') {
         <p class="banner">The list is unavailable.</p>
       } @else {
-        <div class="table-scroll">
-          <table class="data">
-            <thead>
-              <tr>
-                @for (column of columns(); track column.fieldName) {
-                  <th [attr.aria-sort]="ariaSort(column.fieldName)">
-                    <button type="button" class="sort-head" (click)="sortBy(column.fieldName)">
-                      <span>{{ fieldLabel(column.fieldName) }}</span>
-                      @if (sortField() === column.fieldName) {
-                        <app-icon [name]="sortDir() === 'asc' ? 'up' : 'down'" />
-                      }
-                    </button>
-                  </th>
+        @if (view() === 'split') {
+          <div class="rec-list">
+            @for (row of rows.value(); track recordId(row)) {
+              <article
+                class="rec-card"
+                tabindex="0"
+                [class.sel]="isSelected(row)"
+                (click)="selectRow(row)"
+                (keydown.enter)="selectRow(row)">
+                @if (cardParts().image; as imageColumn) {
+                  @if (imageUrl(row[imageColumn]); as src) {
+                    <img class="rec-thumb" [src]="src" alt="" />
+                  }
                 }
-                @if (operations().length) {
-                  <th class="ops">Actions</th>
-                }
-              </tr>
-            </thead>
-            <tbody>
-              @for (row of rows.value(); track recordId(row)) {
+                <div class="rec-body">
+                  <div class="rec-title">
+                    @if (cardParts().title; as titleColumn) {
+                      <ng-container [ngTemplateOutlet]="cellTpl" [ngTemplateOutletContext]="{ $implicit: row, column: { fieldName: titleColumn } }" />
+                    } @else {
+                      {{ recordId(row) }}
+                    }
+                  </div>
+                  @if (cardParts().meta[0]; as subColumn) {
+                    <div class="rec-sub">
+                      <ng-container [ngTemplateOutlet]="cellTpl" [ngTemplateOutletContext]="{ $implicit: row, column: { fieldName: subColumn } }" />
+                    </div>
+                  }
+                </div>
+              </article>
+            } @empty {
+              <p class="muted rec-empty">No records</p>
+            }
+          </div>
+        } @else {
+          <div class="table-scroll">
+            <table class="data">
+              <thead>
                 <tr>
                   @for (column of columns(); track column.fieldName) {
-                    <td>
-                      @if (isImage(column.fieldName) && imageUrl(row[column.fieldName]); as src) {
-                        <img class="thumb" [src]="src" alt="" />
-                      } @else if (isRelation(column.fieldName)) {
-                        <span class="rel-marks">
-                          @for (mark of relationMarks(row[column.fieldName]); track mark.token) {
-                            <app-meta-icon [icon]="metadatas.icon(mark.name)" [label]="mark.name" />
-                          } @empty {
-                            —
-                          }
-                        </span>
-                      } @else {
-                        <app-list-value
-                          [field]="definition(column.fieldName)"
-                          [value]="row[column.fieldName]"
-                          [labels]="linkedLabels()"
-                          [pending]="labelsLoading()" />
-                      }
-                    </td>
+                    <th [attr.aria-sort]="ariaSort(column.fieldName)">
+                      <button type="button" class="sort-head" (click)="sortBy(column.fieldName)">
+                        <span>{{ fieldLabel(column.fieldName) }}</span>
+                        @if (sortField() === column.fieldName) {
+                          <app-icon [name]="sortDir() === 'asc' ? 'up' : 'down'" />
+                        }
+                      </button>
+                    </th>
                   }
                   @if (operations().length) {
-                    <td class="ops">
-                      <div class="icon-row">
-                        @for (operation of operations(); track operation.id) {
-                          <button
-                            type="button"
-                            class="icon-btn"
-                            [attr.aria-label]="operation.name"
-                            [attr.title]="operation.name"
-                            (click)="openWindow(operation.pageType, recordId(row))">
-                            <app-icon [name]="operationIcon(operation.pageType)" />
-                          </button>
-                        }
-                      </div>
-                    </td>
+                    <th class="ops">Actions</th>
                   }
                 </tr>
-              } @empty {
-                <tr>
-                  <td [attr.colspan]="columns().length + (operations().length ? 1 : 0) || 1">No records</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                @for (row of rows.value(); track recordId(row)) {
+                  <tr [class.sel]="isSelected(row)" [class.pickable]="view() === 'split'" (click)="selectRow(row)">
+                    @for (column of columns(); track column.fieldName) {
+                      <td>
+                        <ng-container [ngTemplateOutlet]="cellTpl" [ngTemplateOutletContext]="{ $implicit: row, column: column }" />
+                      </td>
+                    }
+                    @if (operations().length) {
+                      <td class="ops">
+                        <div class="icon-row">
+                          @for (operation of operations(); track operation.id) {
+                            <button
+                              type="button"
+                              class="icon-btn"
+                              [attr.aria-label]="operation.name"
+                              [attr.title]="operation.name"
+                              (click)="openWindow(operation.pageType, recordId(row))">
+                              <app-icon [name]="operationIcon(operation.pageType)" />
+                            </button>
+                          }
+                        </div>
+                      </td>
+                    }
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td [attr.colspan]="columns().length + (operations().length ? 1 : 0) || 1">No records</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
       }
       <p-paginator
         [first]="pageStart()"
@@ -174,8 +224,54 @@
         currentPageReportTemplate="{first}–{last} of {totalRecords}"
         (onPageChange)="changePage($event)" />
     </section>
+      </div>
+      @if (view() === 'split') {
+        <div class="data-dock" aria-label="Record">
+          <div
+            class="side-resizer dock-resizer"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize record pane"
+            title="Drag to resize, double-click to reset"
+            tabindex="0"
+            (pointerdown)="startDockResize($event, split)"
+            (keydown)="dockResizeKey($event, split)"
+            (dblclick)="resetDock()">
+            <span class="grip"><app-icon name="grip" /></span>
+          </div>
+          @if (windows().length) {
+            <ng-container [ngTemplateOutlet]="windowsTpl" />
+          } @else {
+            <div class="dock-empty card">
+              <app-icon name="columns" />
+              <p>Select a record to see it here.</p>
+            </div>
+          }
+        </div>
+      }
+    </div>
+    <ng-template #cellTpl let-row let-column="column">
+      @if (isImage(column.fieldName) && imageUrl(row[column.fieldName]); as src) {
+        <img class="thumb" [src]="src" alt="" />
+      } @else if (isRelation(column.fieldName)) {
+        <span class="rel-marks">
+          @for (mark of relationMarks(row[column.fieldName]); track mark.token) {
+            <app-meta-icon [icon]="metadatas.icon(mark.name)" [label]="mark.name" />
+          } @empty {
+            —
+          }
+        </span>
+      } @else {
+        <app-list-value
+          [field]="definition(column.fieldName)"
+          [value]="row[column.fieldName]"
+          [labels]="linkedLabels()"
+          [pending]="labelsLoading()" />
+      }
+    </ng-template>
+    <ng-template #windowsTpl>
     @if (windows().length) {
-      <div class="window-row" [class.has-dock]="minimizedWindows().length">
+      <div class="window-row" [class.has-dock]="minimizedWindows().length" [class.docked]="view() === 'split'">
         @for (win of windows(); track win.key) {
           @if (windowLayout(win); as side) {
             <section
@@ -186,18 +282,18 @@
               [attr.aria-label]="windowTitle(win)"
               (pointerdown)="focusWindow(win.key)">
               <header class="drawer-head">
-                <div>
-                  <p class="kicker with-icon">
-                    <app-meta-icon [icon]="metadatas.icon(side.metadataName)" [label]="side.metadataName" />
-                    <span>{{ side.metadataName }} · {{ win.record ? side.pageType : 'new' }}</span>
-                  </p>
+                <span class="drawer-mark">
+                  <app-meta-icon [icon]="metadatas.icon(side.metadataName)" [label]="side.metadataName" />
+                </span>
+                <div class="drawer-title">
                   <h2>{{ side.name }}</h2>
+                  <p>{{ side.metadataName }} · {{ win.record ? side.pageType : 'new' }}</p>
                 </div>
-                <div class="icon-row">
-                  <button type="button" class="icon-btn" aria-label="Minimize" title="Minimize" (click)="minimize(win.key)">
+                <div class="drawer-tools">
+                  <button type="button" pButton [text]="true" severity="secondary" size="small" class="bar-icon-btn" aria-label="Minimize" title="Minimize" (click)="minimize(win.key)">
                     <app-icon name="minus" />
                   </button>
-                  <button type="button" class="icon-btn" aria-label="Close" title="Close" (click)="closeWindow(win.key)">
+                  <button type="button" pButton [text]="true" severity="secondary" size="small" class="bar-icon-btn drawer-close" aria-label="Close" title="Close" (click)="closeWindow(win.key)">
                     <app-icon name="close" />
                   </button>
                 </div>
@@ -226,53 +322,75 @@
         </div>
       }
     }
+    </ng-template>
+    @if (view() !== 'split') {
+      <ng-container [ngTemplateOutlet]="windowsTpl" />
+    }
   } @else {
     <section class="wizard">
       @if (recordKey() && record.isLoading()) {
         <p class="muted">Loading the record…</p>
       }
-      <div class="stepper">
+      <div class="stepper" [class.multi]="pageCount() > 1">
         @if (pageCount() > 1) {
-          <span>Step {{ step() + 1 }} of {{ pageCount() }}</span>
+          <ol class="steps" aria-label="Steps">
+            @for (title of pageTitles(); track $index; let i = $index) {
+              <li class="step" [class.done]="i < step()" [class.active]="i === step()">
+                <button type="button" [attr.aria-current]="i === step() ? 'step' : null" [attr.title]="title" (click)="goToStep(i)">
+                  <span class="step-dot">
+                    @if (i < step()) {
+                      <app-icon name="check" />
+                    } @else {
+                      {{ i + 1 }}
+                    }
+                  </span>
+                  <span class="step-title">{{ title }}</span>
+                </button>
+              </li>
+            }
+          </ol>
+        } @else {
+          <strong>{{ pageTitle() }}</strong>
         }
-        <strong>{{ pageTitle() }}</strong>
       </div>
       <form [formGroup]="entryForm()" (ngSubmit)="submit()">
         <formly-form [form]="entryForm()" [fields]="entryFields()" [model]="model" />
-        <div class="row-actions">
-          <button type="button" class="icon-btn" aria-label="Back" title="Back" (click)="previousStep()" [disabled]="pageCount() <= 1 || step() === 0"><app-icon name="back" /></button>
+        <div class="form-actions">
+          @if (pageCount() > 1) {
+            <button type="button" pButton [text]="true" severity="secondary" size="small" (click)="previousStep()" [disabled]="step() === 0">
+              <app-icon name="back" /> Back
+            </button>
+          }
+          <span class="spacer"></span>
           @if (layout()?.pageType === 'edit' && openedAt() === '/data') {
             @if (deleteAsk()) {
-              <span class="confirm-ask">Delete?</span>
-              <button type="button" class="icon-btn btn-primary" aria-label="Confirm delete" title="Confirm delete" [disabled]="saving()" (click)="confirmDelete()">
-                <app-icon name="check" />
-              </button>
-              <button type="button" class="icon-btn" aria-label="Cancel" title="Cancel" (click)="cancelDelete()">
-                <app-icon name="close" />
+              <span class="confirm-ask">Delete this record?</span>
+              <button type="button" pButton [text]="true" severity="secondary" size="small" (click)="cancelDelete()">Cancel</button>
+              <button type="button" pButton severity="danger" size="small" [disabled]="saving()" (click)="confirmDelete()">
+                <app-icon name="trash" /> Delete
               </button>
             } @else {
               @if (recordKey()) {
-                <button type="button" class="icon-btn btn-primary" aria-label="Delete" title="Delete" [disabled]="saving()" (click)="askDelete()">
-                  <app-icon name="trash" />
+                <button type="button" pButton [text]="true" severity="danger" size="small" [disabled]="saving()" (click)="askDelete()">
+                  <app-icon name="trash" /> Delete
                 </button>
               }
-              <button type="button" class="icon-btn btn-primary" [attr.aria-label]="recordKey() ? 'Update' : 'Create'" [attr.title]="recordKey() ? 'Update' : 'Create'" [disabled]="saving()" (click)="saveRecord()">
-                <app-icon name="check" />
+              <button type="button" pButton severity="contrast" size="small" [disabled]="saving()" (click)="saveRecord()">
+                <app-icon [name]="saving() ? 'loader' : 'save'" [class.spin]="saving()" /> {{ recordKey() ? 'Update' : 'Create' }}
               </button>
             }
           }
           @if (step() < pageCount() - 1) {
-            <button type="button" class="icon-btn btn-primary" aria-label="Next" title="Next" (click)="nextStep()"><app-icon name="forward" /></button>
+            <button type="button" pButton severity="contrast" size="small" (click)="nextStep()">Next <app-icon name="forward" /></button>
           } @else if (layout()?.pageType === 'edit' && openedAt() === '/data') {
-            <button type="button" class="icon-btn btn-primary" aria-label="Source" title="Source" (click)="showSource()"><app-icon name="code" /></button>
+            <button type="button" pButton [text]="true" severity="secondary" size="small" title="Source" (click)="showSource()">
+              <app-icon name="code" /> Source
+            </button>
           }
         </div>
       </form>
       @if (saveError()) {
         <p class="banner">{{ saveError() }}</p>
-      }
-      @if (saved()) {
-        <p class="banner ok">Record saved.</p>
       }
       @if (openedAt() === '/data' && result()) {
         <pre class="code">{{ resultText() }}</pre>

@@ -1,17 +1,28 @@
-<section class="page-head">
-  <div>
-    <p class="kicker">api.sne.lol</p>
-    <h1>Layout library</h1>
-  </div>
-  <div class="icon-row">
-    <a class="icon-btn btn-primary" routerLink="/layouts/new" aria-label="Create layout" title="Create layout">
-      <app-icon name="plus" />
-    </a>
-    <button type="button" class="icon-btn btn-primary" aria-label="Create many layouts" title="Create many layouts" (click)="openBulk()">
-      <app-icon name="layers" />
-    </button>
-  </div>
-</section>
+<app-page-bar kicker="api.sne.lol" title="Layout library" [flush]="true">
+  <p-selectbutton
+    class="view-toggle"
+    size="small"
+    aria-label="View"
+    [options]="viewOptions"
+    optionLabel="label"
+    optionValue="value"
+    [allowEmpty]="false"
+    [ngModel]="view()"
+    [ngModelOptions]="{ standalone: true }"
+    (ngModelChange)="setView($event)">
+    <ng-template #item let-item>
+      <app-icon [name]="item.icon" />
+      <span class="view-label">{{ item.label }}</span>
+    </ng-template>
+  </p-selectbutton>
+  <span class="bar-sep" aria-hidden="true"></span>
+  <button type="button" pButton [text]="true" size="small" severity="secondary" class="bar-action" (click)="openBulk()">
+    <app-icon name="layers" /> Bulk create
+  </button>
+  <a pButton size="small" severity="contrast" class="bar-action" routerLink="/layouts/new">
+    <app-icon name="plus" /> New layout
+  </a>
+</app-page-bar>
 
 @if (metadatas.resource.status() === 'error') {
   <p class="banner">Can't read metadata from api.sne.lol.</p>
@@ -23,6 +34,7 @@
   <p class="banner">{{ writeError() }}</p>
 }
 
+<ng-template #filtersTpl>
 <section class="filters" [class.is-open]="filtersOpen()" (click)="!filtersOpen() && filtersOpen.set(true)">
   <div class="section-title">
     <h2>
@@ -98,7 +110,9 @@
     </form>
   }
 </section>
+</ng-template>
 
+<ng-template #resultsTpl>
 @if (!layoutsReady()) {
   <p class="muted">Loading layouts…</p>
 } @else if (layouts().length === 0) {
@@ -114,7 +128,7 @@
   <section class="card-page">
   <div class="cards">
     @for (layout of pageItems(); track layout.id) {
-      <article class="card">
+      <article class="card" [class.sel]="selected()?.id === layout.id" (click)="select(layout.id)">
         <p class="card-title">
           <app-meta-icon [icon]="metadatas.icon(layout.metadataName)" [label]="layout.metadataName" />
           <span class="card-name">{{ layout.name }}</span>
@@ -156,6 +170,30 @@
     currentPageReportTemplate="{first}–{last} of {totalRecords}"
     (onPageChange)="changePage($event)" />
   </section>
+}
+
+</ng-template>
+
+@if (view() === 'split') {
+  <div class="library-split">
+    <section class="list-pane" aria-label="Layouts">
+      <ng-container [ngTemplateOutlet]="filtersTpl" />
+      <ng-container [ngTemplateOutlet]="resultsTpl" />
+    </section>
+
+    <section class="editor-pane" aria-label="Layout editor">
+      @for (layout of selectedList(); track layout.id) {
+        <app-layout-editor [id]="layout.id" [embedded]="true" />
+      } @empty {
+        <p class="muted editor-empty">Select a layout from the list.</p>
+      }
+    </section>
+  </div>
+} @else {
+  <div class="library-grid">
+    <ng-container [ngTemplateOutlet]="filtersTpl" />
+    <ng-container [ngTemplateOutlet]="resultsTpl" />
+  </div>
 }
 
 @if (bulkOpen()) {

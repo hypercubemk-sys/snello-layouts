@@ -1,4 +1,4 @@
-import { NgComponentOutlet } from '@angular/common';
+import { NgComponentOutlet, NgTemplateOutlet } from '@angular/common';
 import { HttpClient, httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, effect, HostListener, inject, input, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -22,14 +22,18 @@ import { FieldDefinition, Metadata } from '../core/models';
 import { LayoutStore } from '../core/layout-store';
 import { MetadataCatalog } from '../core/metadata-catalog';
 import { SnelloApi, joinKeyName, joinLabelName, joinSelect } from '../core/snello-api';
+import { ToastService } from '../core/toast';
 import { humanLabel, isUuid, relationMark, rowsOf, splitCsv } from '../formly/kit';
 import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { ButtonDirective } from '@openng/optimus-ui/button';
 import { CheckboxModule } from '@openng/optimus-ui/checkbox';
+import { SelectButton } from '@openng/optimus-ui/selectbutton';
 import { FormlyModule } from '@ngx-formly/core';
 import { Paginator, PaginatorState } from '@openng/optimus-ui/paginator';
 import { ListValue, linkedLabelKey } from './list-value';
 import { Icon } from '../icon';
 import { MetaIcon } from '../meta-icon';
+import { PageBar } from '../page-bar';
 
 const MENU_FIELD = new Set(['select', 'multiselect', 'join', 'lookup', 'multijoin', 'multilookup']);
 const LINKED = new Set(['join', 'lookup', 'multijoin', 'multilookup', 'select', 'multiselect']);
@@ -54,7 +58,7 @@ interface DockWindow {
 
 @Component({
   selector: 'app-layout-play',
-  imports: [RouterLink, FormsModule, ReactiveFormsModule, FormlyModule, CheckboxModule, Icon, MetaIcon, Paginator, ListValue, NgComponentOutlet],
+  imports: [ButtonDirective, SelectButton, NgTemplateOutlet, RouterLink, FormsModule, ReactiveFormsModule, FormlyModule, CheckboxModule, Icon, MetaIcon, PageBar, Paginator, ListValue, NgComponentOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './layout-play.component.html',
   host: {
@@ -194,6 +198,11 @@ export class LayoutPlayComponent {
     return layout?.body.kind === 'wizard' ? layout.body.pages.length : 0;
   });
 
+  readonly pageTitles = computed(() => {
+    const layout = this.layout();
+    return layout?.body.kind === 'wizard' ? layout.body.pages.map((page, index) => page.title || `Step ${index + 1}`) : [];
+  });
+
   readonly pageTitle = computed(() => {
     const layout = this.layout();
     if (!layout || layout.body.kind !== 'wizard') return '';
@@ -263,6 +272,9 @@ export class LayoutPlayComponent {
   readonly resultText = computed(() => JSON.stringify(this.result(), null, 2));
 
   constructor() {
+    if (!this.embedded() && !this.route.snapshot.queryParamMap.has('view') && this.router.url.startsWith('/data/')) {
+      void this.router.navigate([], { queryParams: { view: this.storedView }, queryParamsHandling: 'merge', replaceUrl: true });
+    }
     effect(() => {
       if (this.embedded()) return;
       const layout = this.layout();
@@ -391,6 +403,88 @@ export class LayoutPlayComponent {
     });
   }
 
+  private readonly storedView: 'list' | 'split' = localStorage.getItem('data-view') === 'split' ? 'split' : 'list';
+  readonly view = computed<'list' | 'split'>(() => {
+    if (this.embedded()) return 'list';
+    const value = this.query()?.get('view');
+    return value === 'split' || value === 'list' ? value : this.storedView;
+  });
+  readonly viewOptions = [
+    { label: 'List', value: 'list', icon: 'list' },
+    { label: 'Split', value: 'split', icon: 'columns' },
+  ];
+
+  setView(view: 'list' | 'split' | null): void {
+    if (!view) return;
+    localStorage.setItem('data-view', view);
+    void this.router.navigate([], { queryParams: { view }, queryParamsHandling: 'merge' });
+  }
+
+  /** Width of the docked record pane in split view; null keeps the default 2/3. */
+  readonly dockWidth = signal<number | null>(Number(localStorage.getItem('data-dock-width')) || null);
+
+  private clampDock(width: number, split: HTMLElement): number {
+    return Math.round(Math.min(split.getBoundingClientRect().width - 240, Math.max(320, width)));
+  }
+
+  private saveDock(): void {
+    const width = this.dockWidth();
+    if (width) localStorage.setItem('data-dock-width', String(width));
+    else localStorage.removeItem('data-dock-width');
+  }
+
+  startDockResize(event: PointerEvent, split: HTMLElement): void {
+    event.preventDefault();
+    const handle = event.currentTarget as HTMLElement;
+    handle.setPointerCapture(event.pointerId);
+    const right = split.getBoundingClientRect().right;
+    const move = (moveEvent: PointerEvent) => this.dockWidth.set(this.clampDock(right - moveEvent.clientX, split));
+    const stop = () => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', stop);
+      handle.removeEventListener('pointercancel', stop);
+      this.saveDock();
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', stop);
+    handle.addEventListener('pointercancel', stop);
+  }
+
+  dockResizeKey(event: KeyboardEvent, split: HTMLElement): void {
+    const step = event.key === 'ArrowLeft' ? 24 : event.key === 'ArrowRight' ? -24 : 0;
+    if (!step) return;
+    event.preventDefault();
+    const current = this.dockWidth() ?? (split.getBoundingClientRect().width * 2) / 3;
+    this.dockWidth.set(this.clampDock(current + step, split));
+    this.saveDock();
+  }
+
+  resetDock(): void {
+    this.dockWidth.set(null);
+    this.saveDock();
+  }
+
+  /** What a record card shows: an image, a title column and a few more columns. */
+  readonly cardParts = computed(() => {
+    const names = this.columns().map((column) => column.fieldName);
+    const image = names.find((name) => this.isImage(name)) ?? null;
+    const plain = names.filter((name) => !this.isImage(name) && !this.isRelation(name));
+    return { image, title: plain[0] ?? '', meta: plain.slice(1, 2) };
+  });
+
+  isSelected(row: Record<string, unknown>): boolean {
+    const id = this.recordId(row);
+    return this.view() === 'split' && this.windows().some((win) => win.record === id);
+  }
+
+  /** In the split view a row click shows the record in the docked pane. */
+  selectRow(row: Record<string, unknown>): void {
+    if (this.view() !== 'split') return;
+    const modes = this.operations().map((operation) => operation.pageType);
+    const mode = modes.includes('edit') ? 'edit' : modes.includes('view') ? 'view' : '';
+    if (mode) this.openWindow(mode, this.recordId(row));
+  }
+
   openWindow(mode: string, record: string): void {
     if (mode !== 'view' && mode !== 'edit') return;
     const same = this.windows().find((win) => win.mode === mode && win.record === record);
@@ -399,6 +493,7 @@ export class LayoutPlayComponent {
       return;
     }
     const key = crypto.randomUUID();
+    if (this.view() === 'split') this.windows.set([]);
     this.windows.update((list) => [...list, { key, mode, record, minimized: false }]);
     this.activeKey.set(key);
   }
@@ -679,6 +774,20 @@ export class LayoutPlayComponent {
     this.step.update((value) => Math.max(0, value - 1));
   }
 
+  /** Going back is free; going forward moves one validated step at a time. */
+  goToStep(target: number): void {
+    if (target < 0 || target >= this.pageCount()) return;
+    if (target <= this.step()) {
+      this.step.set(target);
+      return;
+    }
+    while (this.step() < target) {
+      const before = this.step();
+      this.nextStep();
+      if (this.step() === before) break;
+    }
+  }
+
   nextStep(): void {
     if (this.layout()?.pageType !== 'view' && !this.touchCurrent()) return;
     this.step.update((value) => Math.min(this.pageCount() - 1, value + 1));
@@ -704,6 +813,8 @@ export class LayoutPlayComponent {
     this.deleteAsk.set(false);
   }
 
+  private readonly toasts = inject(ToastService);
+
   async saveRecord(): Promise<void> {
     const layout = this.layout();
     if (!layout || layout.pageType !== 'edit' || this.openedAt() !== '/data' || this.saving()) return;
@@ -719,6 +830,7 @@ export class LayoutPlayComponent {
         : await firstValueFrom(this.http.post<Record<string, unknown>>(this.recordUrl(), payload));
       listRevision.update((value) => value + 1);
       this.saved.set(true);
+      this.toasts.show(id ? 'Record updated.' : 'Record created.');
       const nextId = this.savedId(saved);
       if (!id && nextId) {
         this.recordKey.set(nextId);
@@ -749,6 +861,7 @@ export class LayoutPlayComponent {
     try {
       await firstValueFrom(this.http.delete(this.recordUrl(id), { responseType: 'text' }));
       listRevision.update((value) => value + 1);
+      this.toasts.show('Record deleted.');
       this.deleteAsk.set(false);
       const tell = this.onClosed();
       if (tell) tell();
