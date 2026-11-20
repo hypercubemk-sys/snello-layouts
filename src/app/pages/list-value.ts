@@ -15,6 +15,7 @@ export function linkedLabelKey(table: string, label: string, id: string): string
   selector: 'app-list-value',
   imports: [MapCanvas],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  styles: `.date-tag { display: inline-block; padding: 1px 8px; border: 1px solid var(--line, #ddd); border-radius: 999px; background: #f4f4f4; font-size: 12px; white-space: nowrap; }`,
   template: `
     @if (mapPoints(); as points) {
       @if (points.length) {
@@ -22,6 +23,8 @@ export function linkedLabelKey(table: string, label: string, id: string): string
       } @else {
         —
       }
+    } @else if (isDate() && shown() !== '—') {
+      <span class="date-tag">{{ shown() }}</span>
     } @else {
       {{ shown() }}
     }
@@ -54,6 +57,12 @@ export class ListValue {
       return parsed ? [parsed] : [];
     });
   });
+  readonly isDate = computed(() => {
+    const field = this.field();
+    if (!field) return false;
+    const logical = logicalFieldType(field);
+    return logical === 'date' || logical === 'datetime' || field.name === 'creation_date';
+  });
   readonly shown = computed(() => this.render());
 
   private render(): string {
@@ -64,6 +73,9 @@ export class ListValue {
     const logical = logicalFieldType(field);
     if (logical === 'tinymce') return plainExcerpt(String(value)) || '—';
     if (field.name === 'creation_date') return dateOnly(value);
+    const kind = logical;
+    if (kind === 'date') return dateOnly(value);
+    if (kind === 'datetime') return String(value).trim().replace('T', ' ').slice(0, 16);
     if (field.join_table_name && LINKED.has(logical)) return this.linked(field);
     if (logical === 'select' || logical === 'multiselect') {
       const options = new Map(staticOptions(field).map((option) => [option.value, option.label]));

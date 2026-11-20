@@ -1,4 +1,4 @@
-<app-page-bar kicker="api.sne.lol" title="Layout library" [flush]="true">
+<app-page-bar title="Layout library" [flush]="true">
   <p-selectbutton
     class="view-toggle"
     size="small"
@@ -35,40 +35,43 @@
 }
 
 <ng-template #filtersTpl>
-<section class="filters" [class.is-open]="filtersOpen()" (click)="!filtersOpen() && filtersOpen.set(true)">
-  <div class="section-title">
-    <h2>
-      <button type="button" class="filter-bar" [attr.aria-expanded]="filtersOpen()" [attr.title]="filtersOpen() ? 'Close filters' : 'Open filters'" (click)="$event.stopPropagation(); filtersOpen.set(!filtersOpen())">
-        <span>Filters</span>
-        <span class="icon-btn" aria-hidden="true"><app-icon name="filter" /></span>
-      </button>
-    </h2>
-  </div>
-  @if (!filtersOpen() && chips().length) {
-    <ul class="applied">
-      @for (item of chips(); track item.name) {
-        <li><span>{{ item.label }}</span><strong>{{ item.value }}</strong></li>
+<section class="lib-filters">
+  <div class="lib-filter-row">
+    <label class="lib-search">
+      <app-icon name="search" />
+      <input type="search" placeholder="Search layouts…" aria-label="Search layouts by name" [value]="draftName()" (input)="onName($event)" />
+    </label>
+    <button type="button" pButton [text]="!filtersOpen()" severity="secondary" size="small" class="bar-action" [attr.aria-expanded]="filtersOpen()" (click)="filtersOpen.set(!filtersOpen())">
+      <app-icon name="filter" /> Filters
+      @if (extraFilterCount()) {
+        <span class="filters-count">{{ extraFilterCount() }}</span>
       }
+    </button>
+  </div>
+
+  @if (chips().length) {
+    <ul class="lib-chips" aria-label="Applied filters">
+      @for (item of chips(); track item.name) {
+        <li>
+          <span>{{ item.label }}</span><strong>{{ item.value }}</strong>
+          <button type="button" aria-label="Remove filter" title="Remove" (click)="removeChip(item.name)"><app-icon name="close" /></button>
+        </li>
+      }
+      <li class="lib-clear"><button type="button" (click)="clearFilters()">Clear all</button></li>
     </ul>
   }
+
   @if (filtersOpen()) {
-    <form class="library-filters" (submit)="applyFilters($event)" (click)="$event.stopPropagation()">
+    <form class="lib-filter-form" (submit)="applyFilters($event)">
       <label>
-        Name
-        <p-iconfield iconPosition="right" title="Like">
-          <input class="p-inputtext" [value]="draftName()" (input)="draftName.set($any($event.target).value)" (keydown.enter)="applyFilters($event)" />
-          <p-inputicon><app-icon name="like" /></p-inputicon>
-        </p-iconfield>
-      </label>
-      <label>
-        Group
+        <span>Group</span>
         <p-select
           [options]="groupOptions()"
           optionLabel="label"
           optionValue="value"
           [filter]="true"
           filterPlaceholder="Search"
-          placeholder="All"
+          placeholder="All groups"
           [showClear]="true"
           [resetFilterOnHide]="true"
           appendTo="body"
@@ -78,14 +81,14 @@
           (ngModelChange)="onGroup($event)" />
       </label>
       <label>
-        Metadata
+        <span>Metadata</span>
         <p-select
           [options]="usedMetadata()"
           optionLabel="label"
           optionValue="value"
           [filter]="true"
           filterPlaceholder="Search"
-          placeholder="All"
+          placeholder="All metadata"
           [showClear]="true"
           [resetFilterOnHide]="true"
           appendTo="body"
@@ -94,18 +97,17 @@
           [ngModelOptions]="{ standalone: true }"
           (ngModelChange)="onMetadata($event)" />
       </label>
-      <label>
-        Type
-        <select [value]="draftType()" (change)="draftType.set($any($event.target).value)">
-          <option value="" [selected]="draftType() === ''">All</option>
-          <option value="list" [selected]="draftType() === 'list'">List</option>
-          <option value="edit" [selected]="draftType() === 'edit'">Edit</option>
-          <option value="view" [selected]="draftType() === 'view'">View</option>
-        </select>
-      </label>
-      <div class="row-actions">
-        <button type="submit" class="icon-btn btn-primary" aria-label="Apply" title="Apply"><app-icon name="check" /></button>
-        <button type="button" class="icon-btn" aria-label="Clear" title="Clear" (click)="clearFilters()"><app-icon name="close" /></button>
+      <div class="lib-type">
+        <span>Type</span>
+        <div class="lib-type-chips" role="group" aria-label="Type">
+          @for (option of typeOptions; track option.value) {
+            <button type="button" class="chip" [class.on]="draftType() === option.value" [attr.aria-pressed]="draftType() === option.value" (click)="draftType.set(option.value)">{{ option.label }}</button>
+          }
+        </div>
+      </div>
+      <div class="lib-filter-actions">
+        <button type="button" pButton [text]="true" severity="secondary" size="small" (click)="clearFilters()">Clear</button>
+        <button type="submit" pButton severity="contrast" size="small">Apply</button>
       </div>
     </form>
   }
@@ -113,6 +115,14 @@
 </ng-template>
 
 <ng-template #resultsTpl>
+<p-menu #actions [popup]="true" [model]="menuItems()" appendTo="body" styleClass="card-menu">
+  <ng-template #item let-item>
+    <span class="menu-row" [class.danger]="item.styleClass === 'menu-danger'">
+      <app-icon [name]="item.icon" />
+      <span>{{ item.label }}</span>
+    </span>
+  </ng-template>
+</p-menu>
 @if (!layoutsReady()) {
   <p class="muted">Loading layouts…</p>
 } @else if (layouts().length === 0) {
@@ -128,36 +138,32 @@
   <section class="card-page">
   <div class="cards">
     @for (layout of pageItems(); track layout.id) {
-      <article class="card" [class.sel]="selected()?.id === layout.id" (click)="select(layout.id)">
-        <p class="card-title">
+      <article class="card lib-card" [class.sel]="selected()?.id === layout.id" (click)="select(layout.id)">
+        <span class="lib-icon" aria-hidden="true">
           <app-meta-icon [icon]="metadatas.icon(layout.metadataName)" [label]="layout.metadataName" />
-          <span class="card-name">{{ layout.name }}</span>
-          <span class="page-mark" [attr.title]="pageTitle(layout.pageType)" [attr.aria-label]="pageTitle(layout.pageType)">{{ pageMark(layout.pageType) }}</span>
-        </p>
-        <div class="card-foot">
-          <time [attr.datetime]="layout.updatedAt">{{ layout.updatedAt | date: 'dd/MM/yy' }}</time>
-          <div class="icon-row">
-            @if (pendingId() === layout.id) {
-              <span class="confirm-ask">Delete?</span>
-              <button type="button" class="icon-btn btn-primary" aria-label="Confirm delete" title="Confirm delete" (click)="confirmRemove(layout)">
-                <app-icon name="check" />
-              </button>
-              <button type="button" class="icon-btn" aria-label="Cancel" title="Cancel" (click)="cancelRemove()">
-                <app-icon name="close" />
-              </button>
-            } @else {
-              <a class="icon-btn" [routerLink]="['/layouts', layout.id]" aria-label="Edit" title="Edit">
-                <app-icon name="pencil" />
-              </a>
-              <button type="button" class="icon-btn" aria-label="Clone" title="Clone" (click)="clone(layout)">
-                <app-icon name="clone" />
-              </button>
-              <button type="button" class="icon-btn" aria-label="Delete" title="Delete" (click)="askRemove(layout)">
-                <app-icon name="trash" />
-              </button>
-            }
-          </div>
+        </span>
+        <div class="lib-body">
+          <h3 class="lib-name" [attr.title]="layout.name">{{ layout.name }}</h3>
+          <p class="lib-sub">
+            <span class="lib-kind" [class]="'lib-kind k-' + layout.pageType">{{ pageTitle(layout.pageType) }}</span>
+            <span class="lib-meta">{{ metadataLabel(layout.metadataName) }}</span>
+          </p>
         </div>
+        @if (pendingId() === layout.id) {
+          <div class="lib-confirm">
+            <span class="confirm-ask">Delete?</span>
+            <button type="button" class="icon-btn btn-primary" aria-label="Confirm delete" title="Confirm delete" (click)="confirmRemove(layout); $event.stopPropagation()">
+              <app-icon name="check" />
+            </button>
+            <button type="button" class="icon-btn" aria-label="Cancel" title="Cancel" (click)="cancelRemove(); $event.stopPropagation()">
+              <app-icon name="close" />
+            </button>
+          </div>
+        } @else {
+          <button type="button" class="icon-btn card-more" aria-label="Layout actions" aria-haspopup="menu" title="Actions" (click)="openMenu($event, layout, actions)">
+            <app-icon name="more" />
+          </button>
+        }
       </article>
     }
   </div>

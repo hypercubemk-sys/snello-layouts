@@ -22,6 +22,7 @@ import { FieldDefinition, Metadata } from '../core/models';
 import { LayoutStore } from '../core/layout-store';
 import { MetadataCatalog } from '../core/metadata-catalog';
 import { SnelloApi, joinKeyName, joinLabelName, joinSelect } from '../core/snello-api';
+import { ApiPanelState } from '../core/api-panel-state';
 import { ToastService } from '../core/toast';
 import { humanLabel, isUuid, relationMark, rowsOf, splitCsv } from '../formly/kit';
 import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -401,6 +402,35 @@ export class LayoutPlayComponent {
       const modId = params?.get('modId') ?? '';
       untracked(() => this.consumeRouteWindow(viewId, hasMod, modId));
     });
+
+    effect(() => {
+      if (this.embedded() || this.layout()?.pageType !== 'list') return;
+      const params = this.query();
+      const id = params?.get('id') ?? '';
+      const mode = params?.get('mode') === 'edit' ? 'edit' : 'view';
+      if (!id && !(params?.get('mode') === 'edit')) return;
+      untracked(() => {
+        const open = this.windows().some((win) => win.mode === mode && win.record === id);
+        if (!open) this.openWindow(mode, id);
+      });
+    });
+
+    effect(() => {
+      if (this.embedded() || this.layout()?.pageType !== 'list') return;
+      const list = this.windows().filter((win) => !win.minimized);
+      const active = list.find((win) => win.key === this.activeKey()) ?? list.at(-1);
+      untracked(() => {
+        const params = this.query();
+        const id = active?.record || null;
+        const mode = active ? active.mode : null;
+        if ((params?.get('id') ?? null) === id && (params?.get('mode') ?? null) === mode) return;
+        void this.router.navigate([], {
+          queryParams: { id, mode },
+          queryParamsHandling: 'merge',
+          replaceUrl: !active || (params?.get('id') ?? '') === '',
+        });
+      });
+    });
   }
 
   private readonly storedView: 'list' | 'split' = localStorage.getItem('data-view') === 'split' ? 'split' : 'list';
@@ -696,8 +726,47 @@ export class LayoutPlayComponent {
     for (const key of Object.keys(this.filterModel)) delete this.filterModel[key];
   }
 
+  readonly menuRow = signal('');
+
+  toggleRowMenu(event: Event, row: Record<string, unknown>): void {
+    event.stopPropagation();
+    const id = this.recordId(row);
+    this.menuRow.set(this.menuRow() === id ? '' : id);
+  }
+
+  async duplicateRow(row: Record<string, unknown>): Promise<void> {
+    this.menuRow.set('');
+    const key = this.currentMetadata()?.table_key || 'uuid';
+    const copy: Record<string, unknown> = { ...row };
+    delete copy[key];
+    delete copy['uuid'];
+    delete copy['creation_date'];
+    try {
+      await firstValueFrom(this.http.post(this.recordUrl(), copy));
+      listRevision.update((value) => value + 1);
+      this.toasts.show('Record duplicated.');
+    } catch {
+      this.toasts.show("Can't duplicate the record.");
+    }
+  }
+
+  async deleteRow(row: Record<string, unknown>): Promise<void> {
+    this.menuRow.set('');
+    const id = this.recordId(row);
+    if (!id || !window.confirm('Delete this record?')) return;
+    try {
+      await firstValueFrom(this.http.delete(this.recordUrl(id), { responseType: 'text' }));
+      listRevision.update((value) => value + 1);
+      this.windows.update((list) => list.filter((win) => win.record !== id));
+      this.toasts.show('Record deleted.');
+    } catch {
+      this.toasts.show("Can't delete the record.");
+    }
+  }
+
   @HostListener('document:click', ['$event'])
   closeColumnPop(event: MouseEvent): void {
+    this.menuRow.set('');
     const target = event.target;
     if (target instanceof Element && target.closest('.column-pop, .columns-toggle')) return;
     this.columnsOpen.set(false);
@@ -805,6 +874,11 @@ export class LayoutPlayComponent {
     queueMicrotask(() => document.querySelector('.drawer pre.code, .wizard pre.code')?.scrollIntoView({ block: 'nearest' }));
   }
 
+  cancelEdit(): void {
+    const tell = this.onClosed();
+    if (tell) tell();
+  }
+
   askDelete(): void {
     this.deleteAsk.set(true);
   }
@@ -814,13 +888,28 @@ export class LayoutPlayComponent {
   }
 
   private readonly toasts = inject(ToastService);
+  private readonly apiPanel = inject(ApiPanelState);
+
+  /** Opens the API reference on the call that lists these records, with the current paging, sort and filters. */
+  openApi(): void {
+    const layout = this.layout();
+    if (!layout) return;
+    const query: Record<string, string> = { _start: String(this.pageStart()), _limit: String(this.pageSize()) };
+    for (const [name, value] of Object.entries(this.filterParams())) query[name] = String(value);
+    const sort = this.sortField();
+    if (sort) query['_sort'] = `${sort}:${this.sortDir()}`;
+    this.apiPanel.show({ id: 'get /api/{table}', path: { table: layout.metadataName }, query });
+  }
 
   async saveRecord(): Promise<void> {
     const layout = this.layout();
     if (!layout || layout.pageType !== 'edit' || this.openedAt() !== '/data' || this.saving()) return;
     this.saved.set(false);
     this.saveError.set('');
-    if (!this.readyToSave()) return;
+    if (!this.readyToSave()) {
+      this.saveError.set('Fill in the required fields (highlighted) before saving.');
+      return;
+    }
     const id = this.recordKey();
     const payload = this.outgoingPayload();
     this.saving.set(true);

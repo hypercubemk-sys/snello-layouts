@@ -7,7 +7,7 @@ import { PageBar } from '../page-bar';
   imports: [ApiExplorer, PageBar],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-bar kicker="api.sne.lol" title="API reference" [flush]="true" />
+    <app-page-bar title="API reference" [flush]="true" />
     <div class="api-page"><app-api-explorer /></div>
   `,
 })
