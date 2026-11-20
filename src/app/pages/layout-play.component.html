@@ -67,6 +67,9 @@
             <span class="filters-count">{{ appliedFilters().length }}</span>
           }
         </button>
+        <button type="button" pButton [text]="true" severity="secondary" size="small" class="bar-action" title="Show the API call for this list" (click)="openApi()">
+          <app-icon name="book" /> API
+        </button>
         @if (createLayout(); as edit) {
           <span class="bar-sep" aria-hidden="true"></span>
           <button type="button" pButton severity="contrast" size="small" class="bar-action" title="Add a new record" (click)="openWindow('edit', '')">

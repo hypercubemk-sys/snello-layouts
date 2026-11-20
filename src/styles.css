@@ -1777,3 +1777,17 @@ app-layout-play.play-embedded { display: flex; flex-direction: column; flex: 1 1
 .help-toggle .glyph svg { width: 14px; height: 14px; color: var(--muted); transition: transform 0.15s; }
 .help-toggle[aria-expanded="false"] .glyph svg { transform: rotate(-90deg); }
 .help-back.embedded .help-body article > :last-child { margin-bottom: 12px; }
+
+.api-table-pick { display: grid; gap: 4px; margin-top: 16px; font-size: 12px; }
+.api-table-pick span { color: var(--muted); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; font-size: 11px; }
+
+.api-sub { margin: 16px 0 6px; font-size: 13px; font-weight: 600; }
+.api-label { font-size: 11px; }
+.api-examples { display: flex; flex-wrap: wrap; gap: 4px; }
+.api-examples code { white-space: nowrap; }
+
+.api-tabs { display: flex; gap: 4px; margin: 18px 0 0; border-bottom: 1px solid var(--line); }
+.api-tabs button { display: inline-flex; align-items: center; gap: 6px; margin-bottom: -1px; padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; color: var(--muted); font-size: 13px; font-weight: 500; }
+.api-tabs button:hover { color: var(--ink); }
+.api-tabs button.on { color: var(--ink); border-bottom-color: var(--ink); }
+.api-tabs .glyph svg { width: 14px; height: 14px; }

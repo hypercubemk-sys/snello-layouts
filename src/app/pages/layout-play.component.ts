@@ -22,6 +22,7 @@ import { FieldDefinition, Metadata } from '../core/models';
 import { LayoutStore } from '../core/layout-store';
 import { MetadataCatalog } from '../core/metadata-catalog';
 import { SnelloApi, joinKeyName, joinLabelName, joinSelect } from '../core/snello-api';
+import { ApiPanelState } from '../core/api-panel-state';
 import { ToastService } from '../core/toast';
 import { humanLabel, isUuid, relationMark, rowsOf, splitCsv } from '../formly/kit';
 import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -814,6 +815,18 @@ export class LayoutPlayComponent {
   }
 
   private readonly toasts = inject(ToastService);
+  private readonly apiPanel = inject(ApiPanelState);
+
+  /** Opens the API reference on the call that lists these records, with the current paging, sort and filters. */
+  openApi(): void {
+    const layout = this.layout();
+    if (!layout) return;
+    const query: Record<string, string> = { _start: String(this.pageStart()), _limit: String(this.pageSize()) };
+    for (const [name, value] of Object.entries(this.filterParams())) query[name] = String(value);
+    const sort = this.sortField();
+    if (sort) query['_sort'] = `${sort}:${this.sortDir()}`;
+    this.apiPanel.show({ id: 'get /api/{table}', path: { table: layout.metadataName }, query });
+  }
 
   async saveRecord(): Promise<void> {
     const layout = this.layout();
