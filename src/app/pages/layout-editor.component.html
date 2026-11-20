@@ -1,5 +1,4 @@
 <app-page-bar
-  kicker="Builder"
   [title]="name() || 'New layout'"
   [back]="embedded() ? '' : '/layouts'"
   backLabel="Library"
@@ -7,6 +6,9 @@
   editLabel="Edit layout settings"
   [flush]="true"
   (edit)="settingsOpen.set(true)">
+    <button type="button" pButton [text]="true" severity="secondary" size="small" class="bar-icon-btn" aria-label="Show layout JSON" title="Show layout JSON" [attr.aria-expanded]="showJson()" (click)="showJson.set(true)">
+      <app-icon name="code" />
+    </button>
     @if (viewTargets().length) {
       <button type="button" pButton [text]="true" severity="secondary" size="small" class="bar-action" title="Save this layout and copy its arrangement to the view" (click)="updateViews()" [disabled]="saving()">
         <app-icon name="refresh" [class.spin]="saving()" />
@@ -372,13 +374,6 @@
           </div>
         }
       }
-
-      <button type="button" class="icon-btn json-toggle" [attr.aria-label]="showJson() ? 'Hide JSON' : 'Show JSON'" [attr.title]="showJson() ? 'Hide JSON' : 'Show JSON'" (click)="showJson.set(!showJson())">
-        <app-icon name="code" />
-      </button>
-      @if (showJson()) {
-        <pre class="code">{{ jsonText() }}</pre>
-      }
     </section>
     <div
       class="side-resizer"
@@ -454,6 +449,12 @@
           }
         </ul>
       </div>
+      @if (updatedAt()) {
+        <div class="side-foot">
+          <app-icon name="clock" />
+          <span>Saved <time [attr.datetime]="updatedAt()">{{ updatedAt() | date: 'dd/MM/yy HH:mm' }}</time></span>
+        </div>
+      }
     </div>
   </div>
   @if (pageDialog(); as dialog) {
@@ -532,6 +533,19 @@
         </ul>
       </section>
     </div>
+  }
+  @if (showJson()) {
+    <div class="api-backdrop" (click)="showJson.set(false)"></div>
+    <section class="api-panel json-panel" role="dialog" aria-label="Layout JSON">
+      <header>
+        <span class="api-panel-title"><app-icon name="code" /> Layout JSON</span>
+        <span class="api-panel-tools">
+          <button type="button" class="icon-btn" aria-label="Copy JSON" title="Copy" (click)="copyJson()"><app-icon name="clone" /></button>
+          <button type="button" class="icon-btn" aria-label="Close" title="Close" (click)="showJson.set(false)"><app-icon name="close" /></button>
+        </span>
+      </header>
+      <pre class="code json-body">{{ jsonText() }}</pre>
+    </section>
   }
   @if (confirmDialog(); as dialog) {
     <div class="sheet-back" (click)="closeConfirm(false)">

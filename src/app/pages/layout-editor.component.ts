@@ -1,7 +1,7 @@
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, HostListener, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
-import { NgTemplateOutlet } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ButtonDirective } from '@openng/optimus-ui/button';
@@ -47,7 +47,7 @@ interface LayoutDraft {
 
 @Component({
   selector: 'app-layout-editor',
-  imports: [NgTemplateOutlet, CdkDrag, CdkDropList, CdkDropListGroup, ButtonDirective, FormsModule, CheckboxModule, PanelModule, FieldRow, Icon, MetaIcon, PageBar],
+  imports: [DatePipe, NgTemplateOutlet, CdkDrag, CdkDropList, CdkDropListGroup, ButtonDirective, FormsModule, CheckboxModule, PanelModule, FieldRow, Icon, MetaIcon, PageBar],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[class.embedded]': 'embedded()' },
   templateUrl: './layout-editor.component.html',
@@ -187,6 +187,15 @@ export class LayoutEditorComponent {
     return this.store.all().filter((item) => item.metadataName === this.metadataName() && item.pageType === 'view');
   });
   readonly jsonText = computed(() => JSON.stringify(this.body(), null, 2));
+
+  copyJson(): void {
+    void navigator.clipboard.writeText(this.jsonText()).then(() => this.toasts.show('JSON copied.'));
+  }
+
+  @HostListener('document:keydown.escape')
+  closeJson(): void {
+    if (this.showJson()) this.showJson.set(false);
+  }
 
   constructor() {
     effect(() => {
@@ -827,6 +836,12 @@ export class LayoutEditorComponent {
     }
     void this.persist(created);
   }
+
+  /** When the stored layout was last saved. */
+  readonly updatedAt = computed(() => {
+    const id = this.id();
+    return id ? (this.store.all().find((item) => item.id === id)?.updatedAt ?? '') : '';
+  });
 
   /** True when the editor differs from the saved layout (or the layout was never saved). */
   readonly dirty = computed(() => {

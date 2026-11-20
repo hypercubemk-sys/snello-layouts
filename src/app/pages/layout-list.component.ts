@@ -1,4 +1,4 @@
-import { DatePipe, NgTemplateOutlet } from '@angular/common';
+import { NgTemplateOutlet } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -8,8 +8,8 @@ import { ButtonDirective } from '@openng/optimus-ui/button';
 import { CheckboxModule } from '@openng/optimus-ui/checkbox';
 import { Paginator, PaginatorState } from '@openng/optimus-ui/paginator';
 import { SelectButton } from '@openng/optimus-ui/selectbutton';
-import { IconField } from '@openng/optimus-ui/iconfield';
-import { InputIcon } from '@openng/optimus-ui/inputicon';
+import { Menu } from '@openng/optimus-ui/menu';
+import { MenuItem } from '@openng/optimus-ui/api';
 import { SelectModule } from '@openng/optimus-ui/select';
 import { FormsModule } from '@angular/forms';
 import { seedBody } from '../core/layout-shape';
@@ -26,7 +26,7 @@ const PAGE_SIZES = [10, 20, 50];
 
 @Component({
   selector: 'app-layout-list',
-  imports: [RouterLink, DatePipe, NgTemplateOutlet, LayoutEditorComponent, PageBar, ButtonDirective, SelectButton, Icon, MetaIcon, CheckboxModule, FormsModule, Paginator, SelectModule, IconField, InputIcon],
+  imports: [RouterLink, NgTemplateOutlet, LayoutEditorComponent, PageBar, ButtonDirective, SelectButton, Menu, Icon, MetaIcon, CheckboxModule, FormsModule, Paginator, SelectModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './layout-list.component.html',
 })
@@ -155,6 +155,41 @@ export class LayoutListComponent {
 
   metadataLabel(name: string): string {
     return this.usedMetadata().find((item) => item.value === name)?.label || name;
+  }
+
+  readonly typeOptions = [
+    { label: 'All', value: '' },
+    { label: 'List', value: 'list' },
+    { label: 'Edit', value: 'edit' },
+    { label: 'View', value: 'view' },
+  ];
+
+  /** Applied filters other than the name search (the name has its own box). */
+  readonly extraFilterCount = computed(() => this.chips().filter((chip) => chip.name !== 'name').length);
+
+  /** The name search filters as you type. */
+  onName(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.draftName.set(value);
+    this.appliedName.set(value);
+    this.publishPage(0);
+  }
+
+  removeChip(name: string): void {
+    if (name === 'name') {
+      this.draftName.set('');
+      this.appliedName.set('');
+    } else if (name === 'group') {
+      this.draftGroup.set('');
+      this.appliedGroup.set('');
+    } else if (name === 'metadata') {
+      this.draftMetadata.set('');
+      this.appliedMetadata.set('');
+    } else if (name === 'type') {
+      this.draftType.set('');
+      this.appliedType.set('');
+    }
+    this.publishPage(0);
   }
 
   applyFilters(event?: Event): void {
@@ -315,6 +350,20 @@ export class LayoutListComponent {
     const value = await firstValueFrom(this.http.get<unknown>(request.url));
     const fields = Array.isArray(value) ? (value as FieldDefinition[]) : [];
     return fields.sort((left, right) => (left.order_num ?? 0) - (right.order_num ?? 0));
+  }
+
+  readonly menuItems = signal<MenuItem[]>([]);
+
+  /** One shared popup menu; each card's "…" button points it at its own layout. */
+  openMenu(event: Event, layout: LayoutDocument, menu: Menu): void {
+    event.stopPropagation();
+    this.menuItems.set([
+      { label: 'Edit', icon: 'pencil', command: () => void this.router.navigate(['/layouts', layout.id]) },
+      { label: 'Clone', icon: 'clone', command: () => this.clone(layout) },
+      { separator: true },
+      { label: 'Delete', icon: 'trash', styleClass: 'menu-danger', command: () => this.askRemove(layout) },
+    ]);
+    menu.toggle(event);
   }
 
   askRemove(layout: LayoutDocument): void {

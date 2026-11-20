@@ -7,7 +7,7 @@ import { Icon } from './icon';
  * The slim top bar every page starts with: kicker, title (optionally editable),
  * and the page's actions projected on the right.
  *
- *   <app-page-bar kicker="Builder" title="Brands edit" back="/layouts" [editable]="true" (edit)="…">
+ *   <app-page-bar title="Brands edit" back="/layouts" [editable]="true" (edit)="…">
  *     <button class="btn btn-primary">Save</button>
  *   </app-page-bar>
  *

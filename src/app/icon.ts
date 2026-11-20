@@ -23,6 +23,7 @@ import {
   Copy,
   DecimalsArrowRight,
   Equal,
+  Ellipsis,
   Eraser,
   Eye,
   Flag,
@@ -83,6 +84,7 @@ const ICONS: Record<string, IconNode> = {
   sparkle: Sparkles,
   book: BookOpen,
   save: Save,
+  clock: Clock,
   refresh: RefreshCw,
   loader: LoaderCircle,
   send: Send,
@@ -125,6 +127,7 @@ const ICONS: Record<string, IconNode> = {
   'list-ul': List,
   'list-ol': ListOrdered,
   clear: Eraser,
+  more: Ellipsis,
   // search / range markers
   equals: Equal,
   like: Percent,
