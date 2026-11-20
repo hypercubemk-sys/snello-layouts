@@ -104,7 +104,8 @@ export class LayoutListComponent {
     { label: 'Split', value: 'split', icon: 'columns' },
     { label: 'Cards', value: 'cards', icon: 'grid' },
   ];
-  readonly selectedId = signal<string | null>(null);
+  /** The selected layout lives in the URL (`?id=`) so it survives reloads and can be shared. */
+  readonly selectedId = computed(() => this.query()?.get('id') ?? null);
   readonly selected = computed(() => {
     const items = this.visible();
     return items.find((layout) => layout.id === this.selectedId()) ?? this.pageItems()[0] ?? null;
@@ -120,6 +121,13 @@ export class LayoutListComponent {
   });
 
   constructor() {
+    // Write the default selection (first layout) into the URL once the list is known.
+    effect(() => {
+      const current = this.selected();
+      const wanted = this.selectedId();
+      if (!current || current.id === wanted) return;
+      untracked(() => void this.router.navigate([], { queryParams: { id: current.id }, queryParamsHandling: 'merge', replaceUrl: true }));
+    });
     if (!this.route.snapshot.queryParamMap.has('view')) {
       void this.router.navigate([], { queryParams: { view: this.storedView }, queryParamsHandling: 'merge', replaceUrl: true });
     }
@@ -150,7 +158,8 @@ export class LayoutListComponent {
   }
 
   select(id: string): void {
-    this.selectedId.set(id);
+    if (id === this.selectedId()) return;
+    void this.router.navigate([], { queryParams: { id }, queryParamsHandling: 'merge' });
   }
 
   metadataLabel(name: string): string {
