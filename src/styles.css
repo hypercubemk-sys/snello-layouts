@@ -1780,6 +1780,8 @@ app-layout-play.play-embedded { display: flex; flex-direction: column; flex: 1 1
 
 .api-table-pick { display: grid; gap: 4px; margin-top: 16px; font-size: 12px; }
 .api-table-pick span { color: var(--muted); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; font-size: 11px; }
+.api-openapi { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--accent, var(--primary-color, inherit)); text-decoration: none; }
+.api-openapi:hover { text-decoration: underline; }
 
 .api-sub { margin: 16px 0 6px; font-size: 13px; font-weight: 600; }
 .api-label { font-size: 11px; }
